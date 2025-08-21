@@ -5,8 +5,14 @@ import 'package:instant_chat_app/utils/date_utils.dart' as app_date_utils;
 class ChatRoomTile extends StatelessWidget {
   final ChatRoom chatRoom;
   final VoidCallback onTap;
+  final VoidCallback? onDelete;
 
-  const ChatRoomTile({super.key, required this.chatRoom, required this.onTap});
+  const ChatRoomTile({
+    super.key,
+    required this.chatRoom,
+    required this.onTap,
+    this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -78,32 +84,45 @@ class ChatRoomTile extends StatelessWidget {
             ),
           ],
         ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            if (chatRoom.lastMessage != null)
-              Text(
-                app_date_utils.DateUtils.formatChatRoomTime(
-                  chatRoom.lastMessage!.timestamp,
-                ),
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.5),
-                ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                if (chatRoom.lastMessage != null)
+                  Text(
+                    app_date_utils.DateUtils.formatChatRoomTime(
+                      chatRoom.lastMessage!.timestamp,
+                    ),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.5),
+                    ),
+                  ),
+                const SizedBox(height: 4),
+                if (chatRoom.hasUnreadMessages)
+                  Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+              ],
+            ),
+            if (onDelete != null) ...[
+              const SizedBox(width: 8),
+              IconButton(
+                icon: const Icon(Icons.delete, color: Colors.red, size: 22),
+                tooltip: 'Delete Chat Room',
+                onPressed: onDelete,
               ),
-            const SizedBox(height: 4),
-            if (chatRoom.hasUnreadMessages)
-              Container(
-                width: 12,
-                height: 12,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-              ),
+            ],
           ],
         ),
       ),
