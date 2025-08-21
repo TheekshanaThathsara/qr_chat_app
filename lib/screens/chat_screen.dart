@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
 import 'package:instant_chat_app/models/chat_room.dart';
+import 'package:instant_chat_app/models/message.dart';
 import 'package:instant_chat_app/providers/user_provider.dart';
 import 'package:instant_chat_app/providers/chat_provider.dart';
 import 'package:instant_chat_app/widgets/message_bubble.dart';
@@ -35,10 +36,19 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _updateCharacterCount() {
+    final newLength = _messageController.text.length;
+    final newIsTyping = _messageController.text.trim().isNotEmpty;
+
     setState(() {
-      _characterCount = _messageController.text.length;
-      _isTyping = _messageController.text.trim().isNotEmpty;
+      _characterCount = newLength;
+      _isTyping = newIsTyping;
     });
+
+    // Show typing indicator briefly when user stops typing
+    if (newIsTyping && newLength > 0) {
+      // You could implement a typing indicator here for other users
+      // For now, we'll just update the local state
+    }
   }
 
   void _initializeChat() {
@@ -198,53 +208,76 @@ class _ChatScreenState extends State<ChatScreen> {
                 const SizedBox(width: 8),
                 // Message input field
                 Expanded(
-                  child: TextField(
-                    controller: _messageController,
-                    decoration: InputDecoration(
-                      hintText: 'Type a message...',
-                      border: const OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(24)),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      suffixText: _characterCount > 0
-                          ? '$_characterCount/1000'
-                          : null,
-                      suffixStyle: TextStyle(
-                        color: _characterCount > 800
-                            ? (_characterCount > 1000
-                                  ? Colors.red
-                                  : Colors.orange)
-                            : Colors.grey,
-                        fontSize: 12,
-                      ),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: _isTyping
+                          ? [
+                              BoxShadow(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.primary.withValues(alpha: 0.2),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
+                          : [],
                     ),
-                    maxLines: null,
-                    maxLength: 1000,
-                    buildCounter:
-                        (
-                          context, {
-                          required currentLength,
-                          required isFocused,
-                          maxLength,
-                        }) {
-                          // Hide the default counter since we're showing our own
-                          return null;
-                        },
-                    textInputAction: TextInputAction.send,
-                    onSubmitted: (_) => _sendMessage(),
+                    child: TextField(
+                      controller: _messageController,
+                      decoration: InputDecoration(
+                        hintText: 'Type a message...',
+                        border: const OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(24)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: const BorderRadius.all(
+                            Radius.circular(24),
+                          ),
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.primary,
+                            width: 2,
+                          ),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        suffixText: _characterCount > 0
+                            ? '$_characterCount/1000'
+                            : null,
+                        suffixStyle: TextStyle(
+                          color: _characterCount > 800
+                              ? (_characterCount > 1000
+                                    ? Colors.red
+                                    : Colors.orange)
+                              : Colors.grey,
+                          fontSize: 12,
+                        ),
+                      ),
+                      maxLines: null,
+                      maxLength: 1000,
+                      buildCounter:
+                          (
+                            context, {
+                            required currentLength,
+                            required isFocused,
+                            maxLength,
+                          }) {
+                            // Hide the default counter since we're showing our own
+                            return null;
+                          },
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (_) => _sendMessage(),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
                 // Send button
                 Consumer<ChatProvider>(
                   builder: (context, chatProvider, child) {
-                    final canSend =
-                        chatProvider.isConnected &&
-                        _isTyping &&
-                        !chatProvider.isLoading;
+                    final canSend = _isTyping && !chatProvider.isLoading;
 
                     return AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
@@ -269,6 +302,7 @@ class _ChatScreenState extends State<ChatScreen> {
                               ? Theme.of(context).colorScheme.primary
                               : Colors.grey.shade200,
                           shape: const CircleBorder(),
+                          padding: const EdgeInsets.all(12),
                         ),
                       ),
                     );
@@ -277,21 +311,26 @@ class _ChatScreenState extends State<ChatScreen> {
               ],
             ),
           ),
-          // Connection status indicator
+          // Connection status indicator (simplified since no socket)
           Consumer<ChatProvider>(
             builder: (context, chatProvider, child) {
-              if (!chatProvider.isConnected) {
+              // Show loading indicator when sending messages
+              if (chatProvider.isLoading) {
                 return Container(
                   padding: const EdgeInsets.symmetric(vertical: 8),
-                  color: Colors.orange,
+                  color: Colors.blue.shade100,
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.cloud_off, color: Colors.white, size: 16),
+                      SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
                       SizedBox(width: 8),
                       Text(
-                        'Connecting...',
-                        style: TextStyle(color: Colors.white, fontSize: 12),
+                        'Sending message...',
+                        style: TextStyle(color: Colors.blue, fontSize: 12),
                       ),
                     ],
                   ),
@@ -329,23 +368,37 @@ class _ChatScreenState extends State<ChatScreen> {
 
       if (userProvider.currentUser != null) {
         // Clear message immediately for better UX
+        final messageContent = message;
         _messageController.clear();
 
+        // Reset typing state
+        setState(() {
+          _isTyping = false;
+          _characterCount = 0;
+        });
+
+        // Send message with proper details
         await chatProvider.sendMessage(
-          content: message,
+          content: messageContent,
           sender: userProvider.currentUser!,
+          type: MessageType.text,
         );
 
-        // Auto-scroll to show new message
-        _scrollToBottom();
+        // Auto-scroll to show new message with a slight delay
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _scrollToBottom();
+        });
 
         // Show success feedback for longer messages
-        if (message.length > 100 && mounted) {
+        if (messageContent.length > 50 && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Message sent successfully!'),
+            SnackBar(
+              content: Text(
+                'Message sent: "${messageContent.length} characters"',
+              ),
               backgroundColor: Colors.green,
-              duration: Duration(seconds: 1),
+              duration: const Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
             ),
           );
         }
@@ -674,11 +727,16 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
+      // Use a small delay to ensure the widget tree is built
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+      });
     }
   }
 
