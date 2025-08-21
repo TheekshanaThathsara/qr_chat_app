@@ -39,15 +39,16 @@ class ChatProvider with ChangeNotifier {
 
     try {
       await _databaseService.initializeDatabase();
-      await _socketService.connect(currentUser);
 
-      _socketService.onMessageReceived = _onMessageReceived;
-      _socketService.onUserJoined = _onUserJoined;
-      _socketService.onUserLeft = _onUserLeft;
-      _socketService.onConnectionChanged = _onConnectionChanged;
+      // Commented out socket connection for now
+      // await _socketService.connect(currentUser);
+      // _socketService.onMessageReceived = _onMessageReceived;
+      // _socketService.onUserJoined = _onUserJoined;
+      // _socketService.onUserLeft = _onUserLeft;
+      // _socketService.onConnectionChanged = _onConnectionChanged;
 
       await loadChatRooms();
-      _isConnected = true;
+      _isConnected = false; // Set to false since no socket connection
     } catch (e) {
       debugPrint('Error initializing chat: $e');
     } finally {
@@ -182,11 +183,13 @@ class ChatProvider with ChangeNotifier {
     _currentChatRoom = chatRoom;
     if (chatRoom != null) {
       loadMessages(chatRoom.id);
-      _socketService.joinRoom(chatRoom.id);
+      // _socketService.joinRoom(chatRoom.id); // Commented out for now
     }
     notifyListeners();
   }
 
+  // Commented out socket-related methods for now
+  /*
   void _onMessageReceived(Message message) {
     if (_currentChatRoom?.id == message.chatRoomId) {
       _currentMessages.add(message);
@@ -218,9 +221,10 @@ class ChatProvider with ChangeNotifier {
     _isConnected = isConnected;
     notifyListeners();
   }
+  */
 
   Future<void> disconnect() async {
-    await _socketService.disconnect();
+    // await _socketService.disconnect(); // Commented out for now
     _isConnected = false;
     notifyListeners();
   }

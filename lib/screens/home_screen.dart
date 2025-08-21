@@ -3,13 +3,13 @@ import 'package:provider/provider.dart';
 import 'package:instant_chat_app/providers/user_provider.dart';
 import 'package:instant_chat_app/providers/chat_provider.dart';
 import 'package:instant_chat_app/screens/qr_scanner_screen.dart';
-import 'package:instant_chat_app/screens/create_room_screen.dart';
 import 'package:instant_chat_app/screens/chat_screen.dart';
 import 'package:instant_chat_app/screens/profile_screen.dart';
 import 'package:instant_chat_app/screens/settings_screen.dart';
 import 'package:instant_chat_app/screens/welcome_screen.dart';
 import 'package:instant_chat_app/screens/camera_view_screen.dart';
 import 'package:instant_chat_app/widgets/chat_room_tile.dart';
+import 'package:instant_chat_app/widgets/quick_actions_modal.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -61,14 +61,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  void _showCreateRoomModal() {
+  void _showQuickActionsModal() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => const CreateRoomScreen(),
+      builder: (context) => const QuickActionsModal(),
     );
   }
 
@@ -82,13 +82,38 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  void _handleQrResult(String qrData) {
+  Future<void> _handleQrResult(String qrData) async {
     if (qrData.startsWith('room:')) {
       final roomId = qrData.substring(5);
-      // TODO: Join room with roomId
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Joining room: $roomId')));
+
+      try {
+        final userProvider = Provider.of<UserProvider>(context, listen: false);
+        final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+
+        if (userProvider.currentUser != null) {
+          // Try to join the room
+          await chatProvider.joinChatRoom(roomId, userProvider.currentUser!);
+
+          // Find the joined room and navigate to it
+          final joinedRoom = chatProvider.chatRooms.firstWhere(
+            (room) => room.id == roomId,
+            orElse: () => throw Exception('Room not found'),
+          );
+
+          if (mounted) {
+            _openChatRoom(joinedRoom);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Joined room: ${joinedRoom.name}')),
+            );
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Failed to join room: $e')));
+        }
+      }
     } else {
       ScaffoldMessenger.of(
         context,
@@ -293,8 +318,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _showCreateRoomModal,
-        tooltip: 'Create New Chat Room',
+        onPressed: _showQuickActionsModal,
+        tooltip: 'Quick Actions',
         child: const Icon(Icons.add),
       ),
       bottomNavigationBar: Consumer<ChatProvider>(
@@ -378,9 +403,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 ElevatedButton.icon(
-                  onPressed: _showCreateRoomModal,
+                  onPressed: _showQuickActionsModal,
                   icon: const Icon(Icons.add),
-                  label: const Text('Create Room'),
+                  label: const Text('Quick Actions'),
                 ),
                 OutlinedButton.icon(
                   onPressed: _showScannerScreen,
