@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:instant_chat_app/models/chat_room.dart';
 import 'package:instant_chat_app/providers/user_provider.dart';
 import 'package:instant_chat_app/providers/chat_provider.dart';
@@ -209,8 +210,11 @@ class _ChatScreenState extends State<ChatScreen> {
           content: SizedBox(
             width: 250,
             height: 250,
-            child: const Center(
-              child: Text('QR Code will be implemented here'),
+            child: QrImageView(
+              data: 'room:${widget.chatRoom.id}',
+              version: QrVersions.auto,
+              size: 250.0,
+              backgroundColor: Colors.white,
             ),
           ),
           actions: [
