@@ -67,6 +67,9 @@ dependencies:
 
   # Image handling
   image_picker: ^1.1.2
+  
+  # File picking
+  file_picker: ^8.1.2
 
   # Camera for QR scanning
   camera: ^0.10.5+9
