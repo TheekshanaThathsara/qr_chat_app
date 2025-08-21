@@ -43,39 +43,38 @@ dependencies:
 
   # QR Code functionality
   qr_flutter: ^4.1.0
-  qr_code_scanner_plus: ^2.0.10+1
-  mobile_scanner: ^3.5.6
+  mobile_scanner: ^5.1.1
 
   # Real-time communication
   socket_io_client: ^2.0.3+1
   web_socket_channel: ^2.4.0
 
   # HTTP requests
-  http: ^1.1.2
+  http: ^1.2.2
 
   # Permissions
-  permission_handler: ^11.1.0
+  permission_handler: ^11.3.1
 
   # UUID for unique IDs
-  uuid: ^4.2.1
+  uuid: ^4.4.2
 
   # Date formatting
   intl: ^0.19.0
 
   # Shared preferences for local storage
-  shared_preferences: ^2.2.2
+  shared_preferences: ^2.2.3
 
   # Image handling
-  image_picker: ^1.0.4
+  image_picker: ^1.1.2
 
   # Camera for QR scanning
-  camera: ^0.10.5+7
+  camera: ^0.10.5+9
 
   # Crypto for encryption
   crypto: ^3.0.3
 
   # Device info
-  device_info_plus: ^9.1.1
+  device_info_plus: ^10.1.2
 
 dev_dependencies:
   flutter_test:
@@ -86,7 +85,7 @@ dev_dependencies:
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
-  flutter_lints: ^5.0.0
+  flutter_lints: ^4.0.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

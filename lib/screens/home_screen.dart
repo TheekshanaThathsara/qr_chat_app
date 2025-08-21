@@ -68,10 +68,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  void _showScannerScreen() {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (context) => const QrScannerScreen()));
+  void _showScannerScreen() async {
+    final result = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (context) => const QrScannerScreen()),
+    );
+
+    if (result != null && result.isNotEmpty) {
+      _handleQrResult(result);
+    }
+  }
+
+  void _handleQrResult(String qrData) {
+    if (qrData.startsWith('room:')) {
+      final roomId = qrData.substring(5);
+      // TODO: Join room with roomId
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Joining room: $roomId')));
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Invalid QR code')));
+    }
   }
 
   void _openChatRoom(chatRoom) {

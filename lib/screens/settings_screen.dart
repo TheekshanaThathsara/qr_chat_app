@@ -121,10 +121,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   Text('About', style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 16),
-                  ListTile(
-                    title: const Text('Version'),
-                    subtitle: const Text('1.0.0'),
-                    trailing: const Icon(Icons.info_outline),
+                  const ListTile(
+                    title: Text('Version'),
+                    subtitle: Text('1.0.0'),
+                    trailing: Icon(Icons.info_outline),
                   ),
                   ListTile(
                     title: const Text('Privacy Policy'),
