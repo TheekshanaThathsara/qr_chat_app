@@ -12,12 +12,20 @@ class UserProvider with ChangeNotifier {
 
   bool get isLoggedIn => _currentUser != null;
 
+  // Callback to initialize chat when user is ready
+  Function(User)? onUserReady;
+
   Future<void> initializeUser() async {
     try {
       final userData = await _storageService.getCurrentUser();
       if (userData != null) {
         _currentUser = User.fromJson(userData);
         notifyListeners();
+        
+        // Initialize chat if user is loaded
+        if (_currentUser != null && onUserReady != null) {
+          onUserReady!(_currentUser!);
+        }
       }
     } catch (e) {
       debugPrint('Error initializing user: $e');
@@ -36,6 +44,11 @@ class UserProvider with ChangeNotifier {
       await _storageService.saveCurrentUser(user.toJson());
       _currentUser = user;
       notifyListeners();
+      
+      // Initialize chat when user is created
+      if (onUserReady != null) {
+        onUserReady!(_currentUser!);
+      }
     } catch (e) {
       debugPrint('Error creating user: $e');
       rethrow;
@@ -66,8 +79,16 @@ class UserProvider with ChangeNotifier {
     }
   }
 
+  // Callback to disconnect chat when user logs out
+  Function()? onUserLogout;
+
   Future<void> logout() async {
     try {
+      // Disconnect chat before logging out
+      if (onUserLogout != null) {
+        onUserLogout!();
+      }
+      
       await _storageService.clearCurrentUser();
       _currentUser = null;
       notifyListeners();

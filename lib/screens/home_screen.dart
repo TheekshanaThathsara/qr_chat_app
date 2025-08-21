@@ -78,13 +78,38 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  void _handleQrResult(String qrData) {
+  Future<void> _handleQrResult(String qrData) async {
     if (qrData.startsWith('room:')) {
       final roomId = qrData.substring(5);
-      // TODO: Join room with roomId
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Joining room: $roomId')));
+      
+      try {
+        final userProvider = Provider.of<UserProvider>(context, listen: false);
+        final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+        
+        if (userProvider.currentUser != null) {
+          // Try to join the room
+          await chatProvider.joinChatRoom(roomId, userProvider.currentUser!);
+          
+          // Find the joined room and navigate to it
+          final joinedRoom = chatProvider.chatRooms.firstWhere(
+            (room) => room.id == roomId,
+            orElse: () => throw Exception('Room not found'),
+          );
+          
+          if (mounted) {
+            _openChatRoom(joinedRoom);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Joined room: ${joinedRoom.name}')),
+            );
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to join room: $e')),
+          );
+        }
+      }
     } else {
       ScaffoldMessenger.of(
         context,

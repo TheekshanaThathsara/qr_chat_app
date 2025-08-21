@@ -19,13 +19,26 @@ class InstantChatApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
       ],
-      child: MaterialApp(
-        title: 'Instant Chat',
-        theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.system,
-        home: const SplashScreen(),
-        debugShowCheckedModeBanner: false,
+      child: Consumer2<UserProvider, ChatProvider>(
+        builder: (context, userProvider, chatProvider, child) {
+          // Set up callbacks between providers
+          userProvider.onUserReady = (user) {
+            chatProvider.initializeChat(user);
+          };
+          
+          userProvider.onUserLogout = () {
+            chatProvider.disconnect();
+          };
+
+          return MaterialApp(
+            title: 'Instant Chat',
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: ThemeMode.system,
+            home: const SplashScreen(),
+            debugShowCheckedModeBanner: false,
+          );
+        },
       ),
     );
   }
