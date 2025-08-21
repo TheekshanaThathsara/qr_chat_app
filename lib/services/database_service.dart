@@ -5,6 +5,16 @@ import 'package:instant_chat_app/models/message.dart';
 import 'package:instant_chat_app/models/user.dart';
 
 class DatabaseService {
+  Future<void> deleteChatRoom(String chatRoomId) async {
+    final db = await database;
+    await db.delete('chat_rooms', where: 'id = ?', whereArgs: [chatRoomId]);
+    await db.delete(
+      'messages',
+      where: 'chat_room_id = ?',
+      whereArgs: [chatRoomId],
+    );
+  }
+
   static Database? _database;
   static const String _databaseName = 'instant_chat.db';
   static const int _databaseVersion = 1;
@@ -76,21 +86,20 @@ class DatabaseService {
   // Chat Room operations
   Future<void> saveChatRoom(ChatRoom chatRoom) async {
     final db = await database;
-    await db.insert(
-      'chat_rooms',
-      {
-        'id': chatRoom.id,
-        'name': chatRoom.name,
-        'description': chatRoom.description,
-        'participants': chatRoom.participants.map((u) => u.toJson()).toList().toString(),
-        'last_message': chatRoom.lastMessage?.toJson().toString(),
-        'created_at': chatRoom.createdAt.toIso8601String(),
-        'created_by': chatRoom.createdBy,
-        'is_private': chatRoom.isPrivate ? 1 : 0,
-        'qr_code': chatRoom.qrCode,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await db.insert('chat_rooms', {
+      'id': chatRoom.id,
+      'name': chatRoom.name,
+      'description': chatRoom.description,
+      'participants': chatRoom.participants
+          .map((u) => u.toJson())
+          .toList()
+          .toString(),
+      'last_message': chatRoom.lastMessage?.toJson().toString(),
+      'created_at': chatRoom.createdAt.toIso8601String(),
+      'created_by': chatRoom.createdBy,
+      'is_private': chatRoom.isPrivate ? 1 : 0,
+      'qr_code': chatRoom.qrCode,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<List<ChatRoom>> getChatRooms() async {
@@ -166,22 +175,18 @@ class DatabaseService {
   // Message operations
   Future<void> saveMessage(Message message) async {
     final db = await database;
-    await db.insert(
-      'messages',
-      {
-        'id': message.id,
-        'chat_room_id': message.chatRoomId,
-        'sender_id': message.senderId,
-        'sender_name': message.senderName,
-        'content': message.content,
-        'type': message.type.index,
-        'timestamp': message.timestamp.toIso8601String(),
-        'is_read': message.isRead ? 1 : 0,
-        'image_url': message.imageUrl,
-        'file_name': message.fileName,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await db.insert('messages', {
+      'id': message.id,
+      'chat_room_id': message.chatRoomId,
+      'sender_id': message.senderId,
+      'sender_name': message.senderName,
+      'content': message.content,
+      'type': message.type.index,
+      'timestamp': message.timestamp.toIso8601String(),
+      'is_read': message.isRead ? 1 : 0,
+      'image_url': message.imageUrl,
+      'file_name': message.fileName,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<List<Message>> getMessages(String chatRoomId) async {
@@ -222,17 +227,13 @@ class DatabaseService {
   // User operations
   Future<void> saveUser(User user) async {
     final db = await database;
-    await db.insert(
-      'users',
-      {
-        'id': user.id,
-        'username': user.username,
-        'profile_image': user.profileImage,
-        'last_seen': user.lastSeen.toIso8601String(),
-        'is_online': user.isOnline ? 1 : 0,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await db.insert('users', {
+      'id': user.id,
+      'username': user.username,
+      'profile_image': user.profileImage,
+      'last_seen': user.lastSeen.toIso8601String(),
+      'is_online': user.isOnline ? 1 : 0,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<User?> getUser(String id) async {

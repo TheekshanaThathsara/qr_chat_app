@@ -7,6 +7,8 @@ import 'package:instant_chat_app/screens/create_room_screen.dart';
 import 'package:instant_chat_app/screens/chat_screen.dart';
 import 'package:instant_chat_app/screens/profile_screen.dart';
 import 'package:instant_chat_app/screens/settings_screen.dart';
+import 'package:instant_chat_app/screens/welcome_screen.dart';
+import 'package:instant_chat_app/screens/camera_view_screen.dart';
 import 'package:instant_chat_app/widgets/chat_room_tile.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -17,6 +19,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+  bool _showSearchBar = false;
+  final TextEditingController _searchController = TextEditingController();
   @override
   void initState() {
     super.initState();
@@ -127,66 +131,135 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Instant Chat'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.qr_code_scanner),
-            onPressed: _showScannerScreen,
-            tooltip: 'Scan QR Code',
-          ),
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              switch (value) {
-                case 'profile':
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ProfileScreen(),
+        automaticallyImplyLeading: false,
+        title: _showSearchBar
+            ? SizedBox(
+                width: double.infinity,
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      onPressed: () {
+                        setState(() {
+                          _showSearchBar = false;
+                          _searchController.clear();
+                        });
+                      },
                     ),
-                  );
-                  break;
-                case 'settings':
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const SettingsScreen(),
+                    Expanded(
+                      child: TextField(
+                        controller: _searchController,
+                        autofocus: true,
+                        decoration: InputDecoration(
+                          hintText: 'Search chat rooms...',
+                          border: InputBorder.none,
+                          hintStyle: TextStyle(
+                            color: Colors.white.withOpacity(0.7),
+                          ),
+                          suffixIcon: _searchController.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(
+                                    Icons.clear,
+                                    color: Colors.white,
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _searchController.clear();
+                                    });
+                                  },
+                                )
+                              : null,
+                        ),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                        ),
+                        cursorColor: Colors.white,
+                        onChanged: (value) {
+                          setState(() {});
+                        },
+                      ),
                     ),
-                  );
-                  break;
-                case 'logout':
-                  _showLogoutDialog();
-                  break;
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'profile',
-                child: ListTile(
-                  leading: Icon(Icons.person),
-                  title: Text('Profile'),
-                  contentPadding: EdgeInsets.zero,
+                  ],
                 ),
-              ),
-              const PopupMenuItem(
-                value: 'settings',
-                child: ListTile(
-                  leading: Icon(Icons.settings),
-                  title: Text('Settings'),
-                  contentPadding: EdgeInsets.zero,
+              )
+            : const Text('Instant Chat'),
+        actions: !_showSearchBar
+            ? [
+                IconButton(
+                  icon: const Icon(Icons.camera_alt),
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const CameraViewScreen(),
+                      ),
+                    );
+                  },
+                  tooltip: 'Camera',
                 ),
-              ),
-              const PopupMenuDivider(),
-              const PopupMenuItem(
-                value: 'logout',
-                child: ListTile(
-                  leading: Icon(Icons.logout),
-                  title: Text('Logout'),
-                  contentPadding: EdgeInsets.zero,
+                IconButton(
+                  icon: const Icon(Icons.search),
+                  onPressed: () {
+                    setState(() {
+                      _showSearchBar = true;
+                    });
+                  },
+                  tooltip: 'Search',
                 ),
-              ),
-            ],
-          ),
-        ],
+                PopupMenuButton<String>(
+                  onSelected: (value) {
+                    switch (value) {
+                      case 'profile':
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ProfileScreen(),
+                          ),
+                        );
+                        break;
+                      case 'settings':
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const SettingsScreen(),
+                          ),
+                        );
+                        break;
+                      case 'logout':
+                        _showLogoutDialog();
+                        break;
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'profile',
+                      child: ListTile(
+                        leading: Icon(Icons.person),
+                        title: Text('Profile'),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'settings',
+                      child: ListTile(
+                        leading: Icon(Icons.settings),
+                        title: Text('Settings'),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                    const PopupMenuDivider(),
+                    const PopupMenuItem(
+                      value: 'logout',
+                      child: ListTile(
+                        leading: Icon(Icons.logout),
+                        title: Text('Logout'),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                  ],
+                ),
+              ]
+            : [],
       ),
       body: Consumer2<UserProvider, ChatProvider>(
         builder: (context, userProvider, chatProvider, child) {
@@ -208,6 +281,36 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 return ChatRoomTile(
                   chatRoom: chatRoom,
                   onTap: () => _openChatRoom(chatRoom),
+                  onDelete: () async {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Delete Chat Room'),
+                        content: const Text(
+                          'Are you sure you want to delete this chat room?',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(false),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(true),
+                            child: const Text(
+                              'Delete',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirm == true) {
+                      await Provider.of<ChatProvider>(
+                        context,
+                        listen: false,
+                      ).deleteChatRoom(chatRoom.id);
+                    }
+                  },
                 );
               },
             ),
@@ -227,9 +330,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               color: Theme.of(context).colorScheme.surface,
               border: Border(
                 top: BorderSide(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.outline.withValues(alpha: 0.2),
+                  color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
                 ),
               ),
             ),
@@ -351,7 +452,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       await userProvider.logout();
 
       if (mounted) {
-        Navigator.of(context).pushReplacementNamed('/welcome');
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const WelcomeScreen()),
+          (route) => false,
+        );
       }
     } catch (e) {
       if (mounted) {
