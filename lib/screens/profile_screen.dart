@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:instant_chat_app/providers/user_provider.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -77,13 +78,91 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
                         const SizedBox(height: 16),
-                        TextField(
-                          controller: _nameController,
-                          enabled: _isEditing,
-                          decoration: const InputDecoration(
-                            labelText: 'Username',
-                            border: OutlineInputBorder(),
-                          ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _nameController,
+                                enabled: _isEditing,
+                                decoration: const InputDecoration(
+                                  labelText: 'Username',
+                                  border: OutlineInputBorder(),
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.qr_code),
+                              tooltip: 'Show QR Code',
+                              onPressed: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (context) {
+                                    return Dialog(
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(24.0),
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Text(
+                                              'Your User QR Code',
+                                              style: TextStyle(
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 16),
+                                            const Text(
+                                              'Scan this code to add or identify you',
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(fontSize: 14),
+                                            ),
+                                            const SizedBox(height: 16),
+                                            Container(
+                                              width: 200,
+                                              height: 200,
+                                              decoration: BoxDecoration(
+                                                border: Border.all(
+                                                  color: Colors.grey,
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                                color: Colors.white,
+                                              ),
+                                              child: ClipRRect(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                                child: QrImageView(
+                                                  data: 'user:${user.id}',
+                                                  version: QrVersions.auto,
+                                                  size: 200.0,
+                                                  backgroundColor: Colors.white,
+                                                  foregroundColor: Colors.black,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 16),
+                                            Text(
+                                              'User ID: ${user.id}',
+                                              style: Theme.of(
+                                                context,
+                                              ).textTheme.bodySmall,
+                                              textAlign: TextAlign.center,
+                                            ),
+                                            const SizedBox(height: 24),
+                                            ElevatedButton(
+                                              onPressed: () =>
+                                                  Navigator.of(context).pop(),
+                                              child: const Text('Close'),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 16),
                         TextFormField(

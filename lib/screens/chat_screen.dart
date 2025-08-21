@@ -101,9 +101,7 @@ class _ChatScreenState extends State<ChatScreen> {
             child: Consumer<ChatProvider>(
               builder: (context, chatProvider, child) {
                 if (chatProvider.isLoading) {
-                  return const Center(
-                    child: CircularProgressIndicator(),
-                  );
+                  return const Center(child: CircularProgressIndicator());
                 }
 
                 if (chatProvider.currentMessages.isEmpty) {
@@ -352,11 +350,7 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
         child: Column(
           children: [
-            Icon(
-              icon,
-              size: 32,
-              color: Theme.of(context).colorScheme.primary,
-            ),
+            Icon(icon, size: 32, color: Theme.of(context).colorScheme.primary),
             const SizedBox(height: 8),
             Text(
               label,
@@ -408,14 +402,30 @@ class _ChatScreenState extends State<ChatScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Room QR Code'),
-          content: SizedBox(
-            width: 250,
-            height: 250,
-            child: QrImageView(
-              data: 'room:${widget.chatRoom.id}',
-              version: QrVersions.auto,
-              size: 250.0,
-              backgroundColor: Colors.white,
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Scan this code to join this room',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: 250,
+                  height: 250,
+                  child: QrImageView(
+                    data: 'room:${widget.chatRoom.id}',
+                    version: QrVersions.auto,
+                    backgroundColor: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Room ID: ${widget.chatRoom.id}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
             ),
           ),
           actions: [
