@@ -3,6 +3,8 @@ import 'package:path/path.dart';
 import 'package:instant_chat_app/models/chat_room.dart';
 import 'package:instant_chat_app/models/message.dart';
 import 'package:instant_chat_app/models/user.dart';
+import 'package:instant_chat_app/models/contact.dart';
+import 'package:instant_chat_app/services/contact_service.dart';
 
 class DatabaseService {
   Future<void> deleteChatRoom(String chatRoomId) async {
@@ -75,6 +77,18 @@ class DatabaseService {
         profile_image TEXT,
         last_seen TEXT NOT NULL,
         is_online INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
+
+    // Create contacts table
+    await db.execute('''
+      CREATE TABLE contacts (
+        id TEXT PRIMARY KEY,
+        userId TEXT NOT NULL,
+        username TEXT NOT NULL,
+        profileImage TEXT,
+        addedAt TEXT NOT NULL,
+        isBlocked INTEGER NOT NULL DEFAULT 0
       )
     ''');
   }
@@ -260,5 +274,36 @@ class DatabaseService {
     String path = join(await getDatabasesPath(), _databaseName);
     await databaseFactory.deleteDatabase(path);
     _database = null;
+  }
+
+  // Contact methods
+  Future<void> addContact(Contact contact) async {
+    final db = await database;
+    await ContactService.addContact(db, contact);
+  }
+
+  Future<List<Contact>> getContacts() async {
+    final db = await database;
+    return await ContactService.getContacts(db);
+  }
+
+  Future<Contact?> getContactByUserId(String userId) async {
+    final db = await database;
+    return await ContactService.getContactByUserId(db, userId);
+  }
+
+  Future<void> updateContact(Contact contact) async {
+    final db = await database;
+    await ContactService.updateContact(db, contact);
+  }
+
+  Future<void> deleteContact(String contactId) async {
+    final db = await database;
+    await ContactService.deleteContact(db, contactId);
+  }
+
+  Future<bool> isContactExists(String userId) async {
+    final db = await database;
+    return await ContactService.isContactExists(db, userId);
   }
 }
