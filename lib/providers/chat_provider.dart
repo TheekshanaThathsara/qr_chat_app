@@ -7,6 +7,16 @@ import 'package:instant_chat_app/services/socket_service.dart';
 import 'package:uuid/uuid.dart';
 
 class ChatProvider with ChangeNotifier {
+  Future<void> deleteChatRoom(String chatRoomId) async {
+    try {
+      await _databaseService.deleteChatRoom(chatRoomId);
+      _chatRooms.removeWhere((room) => room.id == chatRoomId);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error deleting chat room: $e');
+    }
+  }
+
   final DatabaseService _databaseService = DatabaseService();
   final SocketService _socketService = SocketService();
   final Uuid _uuid = const Uuid();
@@ -30,7 +40,7 @@ class ChatProvider with ChangeNotifier {
     try {
       await _databaseService.initializeDatabase();
       await _socketService.connect(currentUser);
-      
+
       _socketService.onMessageReceived = _onMessageReceived;
       _socketService.onUserJoined = _onUserJoined;
       _socketService.onUserLeft = _onUserLeft;
@@ -100,20 +110,20 @@ class ChatProvider with ChangeNotifier {
         final updatedParticipants = [...chatRoom.participants];
         if (!updatedParticipants.any((p) => p.id == user.id)) {
           updatedParticipants.add(user);
-          
+
           final updatedChatRoom = chatRoom.copyWith(
             participants: updatedParticipants,
           );
-          
+
           await _databaseService.saveChatRoom(updatedChatRoom);
-          
+
           final index = _chatRooms.indexWhere((room) => room.id == chatRoomId);
           if (index != -1) {
             _chatRooms[index] = updatedChatRoom;
           } else {
             _chatRooms.add(updatedChatRoom);
           }
-          
+
           _socketService.joinRoom(chatRoomId);
           notifyListeners();
         }
@@ -148,12 +158,14 @@ class ChatProvider with ChangeNotifier {
 
       await _databaseService.saveMessage(message);
       _currentMessages.add(message);
-      
+
       // Update last message in chat room
       final updatedChatRoom = _currentChatRoom!.copyWith(lastMessage: message);
       await _databaseService.saveChatRoom(updatedChatRoom);
-      
-      final index = _chatRooms.indexWhere((room) => room.id == _currentChatRoom!.id);
+
+      final index = _chatRooms.indexWhere(
+        (room) => room.id == _currentChatRoom!.id,
+      );
       if (index != -1) {
         _chatRooms[index] = updatedChatRoom;
       }
@@ -179,13 +191,15 @@ class ChatProvider with ChangeNotifier {
     if (_currentChatRoom?.id == message.chatRoomId) {
       _currentMessages.add(message);
     }
-    
+
     // Update last message in chat room
-    final index = _chatRooms.indexWhere((room) => room.id == message.chatRoomId);
+    final index = _chatRooms.indexWhere(
+      (room) => room.id == message.chatRoomId,
+    );
     if (index != -1) {
       _chatRooms[index] = _chatRooms[index].copyWith(lastMessage: message);
     }
-    
+
     _databaseService.saveMessage(message);
     notifyListeners();
   }
