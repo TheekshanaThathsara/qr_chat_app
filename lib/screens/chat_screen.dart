@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
+import 'dart:io';
 import 'package:instant_chat_app/models/chat_room.dart';
 import 'package:instant_chat_app/providers/user_provider.dart';
 import 'package:instant_chat_app/providers/chat_provider.dart';
@@ -18,12 +21,23 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final ImagePicker _imagePicker = ImagePicker();
+  int _characterCount = 0;
+  bool _isTyping = false;
 
   @override
   void initState() {
     super.initState();
+    _messageController.addListener(_updateCharacterCount);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeChat();
+    });
+  }
+
+  void _updateCharacterCount() {
+    setState(() {
+      _characterCount = _messageController.text.length;
+      _isTyping = _messageController.text.trim().isNotEmpty;
     });
   }
 
@@ -34,6 +48,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    _messageController.removeListener(_updateCharacterCount);
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -185,17 +200,39 @@ class _ChatScreenState extends State<ChatScreen> {
                 Expanded(
                   child: TextField(
                     controller: _messageController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: 'Type a message...',
-                      border: OutlineInputBorder(
+                      border: const OutlineInputBorder(
                         borderRadius: BorderRadius.all(Radius.circular(24)),
                       ),
-                      contentPadding: EdgeInsets.symmetric(
+                      contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 8,
                       ),
+                      suffixText: _characterCount > 0
+                          ? '$_characterCount/1000'
+                          : null,
+                      suffixStyle: TextStyle(
+                        color: _characterCount > 800
+                            ? (_characterCount > 1000
+                                  ? Colors.red
+                                  : Colors.orange)
+                            : Colors.grey,
+                        fontSize: 12,
+                      ),
                     ),
                     maxLines: null,
+                    maxLength: 1000,
+                    buildCounter:
+                        (
+                          context, {
+                          required currentLength,
+                          required isFocused,
+                          maxLength,
+                        }) {
+                          // Hide the default counter since we're showing our own
+                          return null;
+                        },
                     textInputAction: TextInputAction.send,
                     onSubmitted: (_) => _sendMessage(),
                   ),
@@ -204,20 +241,35 @@ class _ChatScreenState extends State<ChatScreen> {
                 // Send button
                 Consumer<ChatProvider>(
                   builder: (context, chatProvider, child) {
-                    return IconButton(
-                      onPressed: chatProvider.isConnected ? _sendMessage : null,
-                      icon: chatProvider.isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.send),
-                      style: IconButton.styleFrom(
-                        backgroundColor: chatProvider.isConnected
-                            ? Theme.of(context).colorScheme.primary
-                            : Colors.grey,
-                        foregroundColor: Colors.white,
+                    final canSend =
+                        chatProvider.isConnected &&
+                        _isTyping &&
+                        !chatProvider.isLoading;
+
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      child: IconButton(
+                        onPressed: canSend ? _sendMessage : null,
+                        icon: chatProvider.isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Icon(
+                                Icons.send,
+                                color: canSend
+                                    ? Colors.white
+                                    : Colors.grey.shade400,
+                              ),
+                        style: IconButton.styleFrom(
+                          backgroundColor: canSend
+                              ? Theme.of(context).colorScheme.primary
+                              : Colors.grey.shade200,
+                          shape: const CircleBorder(),
+                        ),
                       ),
                     );
                   },
@@ -255,13 +307,28 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _sendMessage() async {
     final message = _messageController.text.trim();
+
+    // Enhanced validation
     if (message.isEmpty) return;
+
+    if (message.length > 1000) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Message is too long. Please keep it under 1000 characters.',
+          ),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
 
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       final chatProvider = Provider.of<ChatProvider>(context, listen: false);
 
       if (userProvider.currentUser != null) {
+        // Clear message immediately for better UX
         _messageController.clear();
 
         await chatProvider.sendMessage(
@@ -269,7 +336,19 @@ class _ChatScreenState extends State<ChatScreen> {
           sender: userProvider.currentUser!,
         );
 
+        // Auto-scroll to show new message
         _scrollToBottom();
+
+        // Show success feedback for longer messages
+        if (message.length > 100 && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Message sent successfully!'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 1),
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -277,6 +356,14 @@ class _ChatScreenState extends State<ChatScreen> {
           SnackBar(
             content: Text('Failed to send message: $e'),
             backgroundColor: Colors.red,
+            action: SnackBarAction(
+              label: 'Retry',
+              textColor: Colors.white,
+              onPressed: () {
+                _messageController.text = message;
+                _sendMessage();
+              },
+            ),
           ),
         );
       }
@@ -365,25 +452,224 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  void _pickImageFromCamera() {
-    // TODO: Implement camera image picker
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Camera feature will be implemented')),
+  void _pickImageFromCamera() async {
+    Navigator.of(context).pop(); // Close the attachment modal
+
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 80,
+        maxWidth: 1920,
+        maxHeight: 1080,
+      );
+
+      if (image != null) {
+        _showImagePreview(image);
+      }
+    } catch (e) {
+      _showErrorSnackBar('Failed to capture image: $e');
+    }
+  }
+
+  void _pickImageFromGallery() async {
+    Navigator.of(context).pop(); // Close the attachment modal
+
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+        maxWidth: 1920,
+        maxHeight: 1080,
+      );
+
+      if (image != null) {
+        _showImagePreview(image);
+      }
+    } catch (e) {
+      _showErrorSnackBar('Failed to select image: $e');
+    }
+  }
+
+  void _pickFile() async {
+    Navigator.of(context).pop(); // Close the attachment modal
+
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.any,
+        allowMultiple: false,
+        allowedExtensions: null,
+      );
+
+      if (result != null && result.files.single.path != null) {
+        PlatformFile file = result.files.first;
+        _showFilePreview(file);
+      }
+    } catch (e) {
+      _showErrorSnackBar('Failed to select file: $e');
+    }
+  }
+
+  void _showImagePreview(XFile image) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Send Image?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.file(
+                File(image.path),
+                height: 200,
+                width: 200,
+                fit: BoxFit.cover,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              image.name,
+              style: Theme.of(context).textTheme.bodySmall,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _sendImageMessage(image);
+            },
+            child: const Text('Send'),
+          ),
+        ],
+      ),
     );
   }
 
-  void _pickImageFromGallery() {
-    // TODO: Implement gallery image picker
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Gallery feature will be implemented')),
+  void _showFilePreview(PlatformFile file) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Send File?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              _getFileIcon(file.extension),
+              size: 64,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              file.name,
+              style: Theme.of(context).textTheme.titleMedium,
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+            ),
+            Text(
+              _formatFileSize(file.size),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _sendFileMessage(file);
+            },
+            child: const Text('Send'),
+          ),
+        ],
+      ),
     );
   }
 
-  void _pickFile() {
-    // TODO: Implement file picker
+  IconData _getFileIcon(String? extension) {
+    switch (extension?.toLowerCase()) {
+      case 'pdf':
+        return Icons.picture_as_pdf;
+      case 'doc':
+      case 'docx':
+        return Icons.description;
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif':
+        return Icons.image;
+      case 'mp4':
+      case 'avi':
+      case 'mov':
+        return Icons.video_file;
+      case 'mp3':
+      case 'wav':
+      case 'aac':
+        return Icons.audio_file;
+      default:
+        return Icons.attach_file;
+    }
+  }
+
+  void _sendImageMessage(XFile image) {
+    // For now, just show a placeholder message
+    // In a real app, you'd upload the image and send the URL
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('File picker will be implemented')),
+      SnackBar(
+        content: Text('Image ready to send: ${image.name}'),
+        backgroundColor: Colors.green,
+        action: SnackBarAction(
+          label: 'View',
+          textColor: Colors.white,
+          onPressed: () {
+            // Could open image viewer here
+          },
+        ),
+      ),
     );
+  }
+
+  void _sendFileMessage(PlatformFile file) {
+    // For now, just show a placeholder message
+    // In a real app, you'd upload the file and send the URL
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('File ready to send: ${file.name}'),
+        backgroundColor: Colors.green,
+        action: SnackBarAction(
+          label: 'Info',
+          textColor: Colors.white,
+          onPressed: () {
+            // Could show file info here
+          },
+        ),
+      ),
+    );
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  String _formatFileSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1048576) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    if (bytes < 1073741824) return '${(bytes / 1048576).toStringAsFixed(1)} MB';
+    return '${(bytes / 1073741824).toStringAsFixed(1)} GB';
   }
 
   void _scrollToBottom() {

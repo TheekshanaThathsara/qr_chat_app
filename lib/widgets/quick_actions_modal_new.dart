@@ -20,7 +20,6 @@ class QuickActionsModal extends StatefulWidget {
 class _QuickActionsModalState extends State<QuickActionsModal> {
   final DatabaseService _databaseService = DatabaseService();
   List<Contact> _contacts = [];
-  bool _isLoadingContacts = false;
 
   @override
   void initState() {
@@ -29,10 +28,6 @@ class _QuickActionsModalState extends State<QuickActionsModal> {
   }
 
   Future<void> _loadContacts() async {
-    setState(() {
-      _isLoadingContacts = true;
-    });
-
     try {
       final contacts = await _databaseService.getContacts();
       setState(() {
@@ -40,38 +35,6 @@ class _QuickActionsModalState extends State<QuickActionsModal> {
       });
     } catch (e) {
       debugPrint('Error loading contacts: $e');
-    } finally {
-      setState(() {
-        _isLoadingContacts = false;
-      });
-    }
-  }
-
-  Future<void> _addContact(User user) async {
-    try {
-      final contact = Contact(
-        id: const Uuid().v4(),
-        userId: user.id,
-        username: user.username,
-        profileImage: user.profileImage,
-        addedAt: DateTime.now(),
-      );
-
-      await _databaseService.addContact(contact);
-      await _loadContacts();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${user.username} added to contacts')),
-        );
-      }
-    } catch (e) {
-      debugPrint('Error adding contact: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Failed to add contact')));
-      }
     }
   }
 
@@ -100,6 +63,17 @@ class _QuickActionsModalState extends State<QuickActionsModal> {
             padding: const EdgeInsets.all(20),
             child: Row(
               children: [
+                // Back button
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.arrow_back_ios),
+                  tooltip: 'Close',
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.grey.withOpacity(0.1),
+                    padding: const EdgeInsets.all(8),
+                  ),
+                ),
+                const SizedBox(width: 12),
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
@@ -115,19 +89,21 @@ class _QuickActionsModalState extends State<QuickActionsModal> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Quick Actions',
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      'Choose an action below',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                    ),
-                  ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Quick Actions',
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        'Choose an action below',
+                        style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -332,7 +308,7 @@ class _QuickActionsModalState extends State<QuickActionsModal> {
   }
 
   void _navigateToScanner() {
-    Navigator.of(context).pop();
+    Navigator.of(context).pop(); // Close Quick Actions modal
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -340,7 +316,18 @@ class _QuickActionsModalState extends State<QuickActionsModal> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) => const QRScannerModal(),
-    );
+    ).then((_) {
+      // Optionally show Quick Actions again after scanner closes
+      // You can uncomment the lines below if you want to return to Quick Actions after scanning
+      // showModalBottomSheet(
+      //   context: context,
+      //   isScrollControlled: true,
+      //   shape: const RoundedRectangleBorder(
+      //     borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      //   ),
+      //   builder: (context) => const QuickActionsModal(),
+      // );
+    });
   }
 
   void _showMyQRCode() {
@@ -359,6 +346,17 @@ class _QuickActionsModalState extends State<QuickActionsModal> {
             children: [
               Row(
                 children: [
+                  // Back button
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.arrow_back_ios),
+                    tooltip: 'Back',
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.grey.withOpacity(0.1),
+                      padding: const EdgeInsets.all(8),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
@@ -380,10 +378,6 @@ class _QuickActionsModalState extends State<QuickActionsModal> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close),
                   ),
                 ],
               ),
@@ -540,6 +534,17 @@ class _QRScannerModalState extends State<QRScannerModal> {
             padding: const EdgeInsets.all(20),
             child: Row(
               children: [
+                // Back button
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.arrow_back_ios),
+                  tooltip: 'Back',
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.grey.withOpacity(0.1),
+                    padding: const EdgeInsets.all(8),
+                  ),
+                ),
+                const SizedBox(width: 12),
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
@@ -571,9 +576,27 @@ class _QRScannerModalState extends State<QRScannerModal> {
                     ],
                   ),
                 ),
+                // Add Quick Actions button
                 IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close),
+                  onPressed: () {
+                    Navigator.of(context).pop(); // Close scanner
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(20),
+                        ),
+                      ),
+                      builder: (context) => const QuickActionsModal(),
+                    );
+                  },
+                  icon: const Icon(Icons.flash_on),
+                  tooltip: 'Quick Actions',
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.blue.withOpacity(0.1),
+                    padding: const EdgeInsets.all(8),
+                  ),
                 ),
               ],
             ),
@@ -804,6 +827,17 @@ class _ContactsModalState extends State<ContactsModal> {
             padding: const EdgeInsets.all(20),
             child: Row(
               children: [
+                // Back button
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.arrow_back_ios),
+                  tooltip: 'Back',
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.grey.withOpacity(0.1),
+                    padding: const EdgeInsets.all(8),
+                  ),
+                ),
+                const SizedBox(width: 12),
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
@@ -835,9 +869,27 @@ class _ContactsModalState extends State<ContactsModal> {
                     ],
                   ),
                 ),
+                // Add Quick Actions button
                 IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close),
+                  onPressed: () {
+                    Navigator.of(context).pop(); // Close contacts
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(20),
+                        ),
+                      ),
+                      builder: (context) => const QuickActionsModal(),
+                    );
+                  },
+                  icon: const Icon(Icons.flash_on),
+                  tooltip: 'Quick Actions',
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.orange.withOpacity(0.1),
+                    padding: const EdgeInsets.all(8),
+                  ),
                 ),
               ],
             ),

@@ -193,22 +193,6 @@ class MessageBubble extends StatelessWidget {
                     },
                   ),
                 ),
-              )
-            else
-              Container(
-                width: 200,
-                height: 150,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.image, size: 50, color: Colors.grey),
-                    Text('Image', style: TextStyle(color: Colors.grey)),
-                  ],
-                ),
               ),
             if (message.content.isNotEmpty)
               Padding(
