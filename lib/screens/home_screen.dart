@@ -322,39 +322,46 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         tooltip: 'Quick Actions',
         child: const Icon(Icons.add),
       ),
-      bottomNavigationBar: Consumer<ChatProvider>(
-        builder: (context, chatProvider, child) {
-          return Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              border: Border(
-                top: BorderSide(
-                  color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
-                ),
-              ),
+      bottomNavigationBar: Container(
+  padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 24),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.primary,
+          border: Border(
+            top: BorderSide(
+              color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  chatProvider.isConnected
-                      ? Icons.circle
-                      : Icons.circle_outlined,
-                  color: chatProvider.isConnected ? Colors.green : Colors.red,
-                  size: 12,
+                IconButton(
+                  icon: const Icon(Icons.chat, size: 32),
+                  onPressed: () {
+                    // Go to chat list or main chat screen
+                    // You can customize navigation here
+                  },
+                  tooltip: 'Chat',
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  chatProvider.isConnected ? 'Connected' : 'Disconnected',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: chatProvider.isConnected ? Colors.green : Colors.red,
-                  ),
-                ),
+                const Text('Chat'),
               ],
             ),
-          );
-        },
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.qr_code_scanner, size: 32),
+                  onPressed: _showScannerScreen,
+                  tooltip: 'Scan QR',
+                ),
+                const Text('Scan QR'),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
