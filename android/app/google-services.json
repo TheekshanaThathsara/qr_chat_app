@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "470678893379",
+    "project_id": "instantchatapp-aa2fb",
+    "storage_bucket": "instantchatapp-aa2fb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:470678893379:android:15500ceb39de830e68b5f6",
+        "android_client_info": {
+          "package_name": "com.example.instant_chat_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCQ5qwlK9PM2x_XutjZOeRTmujOvRYKZjY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
