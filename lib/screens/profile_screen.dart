@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:instant_chat_app/providers/user_provider.dart';
@@ -13,6 +15,8 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final TextEditingController _nameController = TextEditingController();
   bool _isEditing = false;
+  bool _isImageLoading = false;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -52,18 +56,64 @@ class _ProfileScreenState extends State<ProfileScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Center(
-                  child: CircleAvatar(
-                    radius: 60,
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    child: Text(
-                      user.username.isNotEmpty
-                          ? user.username[0].toUpperCase()
-                          : 'U',
-                      style: TextStyle(
-                        fontSize: 48,
-                        color: Theme.of(context).colorScheme.onPrimary,
+                  child: Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      user.profileImage != null && user.profileImage!.isNotEmpty
+                          ? CircleAvatar(
+                              radius: 60,
+                              backgroundImage: NetworkImage(user.profileImage!),
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.primary,
+                            )
+                          : CircleAvatar(
+                              radius: 60,
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.primary,
+                              child: Text(
+                                user.username.isNotEmpty
+                                    ? user.username[0].toUpperCase()
+                                    : 'U',
+                                style: TextStyle(
+                                  fontSize: 48,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onPrimary,
+                                ),
+                              ),
+                            ),
+                      Positioned(
+                        bottom: 0,
+                        right: 4,
+                        child: InkWell(
+                          onTap: _isImageLoading
+                              ? null
+                              : () => _pickProfileImage(userProvider),
+                          child: CircleAvatar(
+                            radius: 20,
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.secondary,
+                            child: _isImageLoading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : Icon(
+                                    Icons.edit,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                  ),
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 32),
@@ -198,6 +248,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() {
       _isEditing = !_isEditing;
     });
+  }
+
+  Future<void> _pickProfileImage(UserProvider userProvider) async {
+    setState(() {
+      _isImageLoading = true;
+    });
+    try {
+      final pickedFile = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 70,
+      );
+      if (pickedFile != null) {
+        // For demo: store as base64 string. In production, upload to server or local storage and use URL/path.
+        final bytes = await pickedFile.readAsBytes();
+        final base64Image = 'data:image/png;base64,${base64Encode(bytes)}';
+        await userProvider.updateUser(profileImage: base64Image);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to update image: $e')));
+    } finally {
+      setState(() {
+        _isImageLoading = false;
+      });
+    }
   }
 
   Future<void> _saveProfile() async {
