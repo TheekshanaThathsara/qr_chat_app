@@ -10,6 +10,7 @@ import 'package:instant_chat_app/screens/welcome_screen.dart';
 import 'package:instant_chat_app/screens/camera_view_screen.dart';
 import 'package:instant_chat_app/widgets/chat_room_tile.dart';
 import 'package:instant_chat_app/widgets/quick_actions_modal.dart';
+import 'package:instant_chat_app/screens/login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -460,7 +461,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const WelcomeScreen()),
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
           (route) => false,
         );
       }

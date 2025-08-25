@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:instant_chat_app/providers/user_provider.dart';
 import 'package:instant_chat_app/screens/home_screen.dart';
+import 'package:instant_chat_app/screens/login_screen.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -12,14 +13,16 @@ class WelcomeScreen extends StatefulWidget {
 
 class _WelcomeScreenState extends State<WelcomeScreen> {
   final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
 
   @override
   void dispose() {
-    _usernameController.dispose();
-    _passwordController.dispose();
+  _usernameController.dispose();
+  _emailController.dispose();
+  _passwordController.dispose();
     super.dispose();
   }
 
@@ -32,8 +35,12 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
-      // You may need to update createUser to accept password if needed
-      await userProvider.createUser(_usernameController.text.trim());
+      // You may need to update createUser to accept email and password if needed
+      await userProvider.createUser(
+        _usernameController.text.trim(),
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
 
       if (mounted) {
         Navigator.of(context).pushReplacement(
@@ -151,6 +158,27 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
+                        controller: _emailController,
+                        decoration: const InputDecoration(
+                          labelText: 'Email',
+                          hintText: 'Enter your email',
+                          prefixIcon: Icon(Icons.email),
+                        ),
+                        keyboardType: TextInputType.emailAddress,
+                        textInputAction: TextInputAction.next,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Please enter your email';
+                          }
+                          final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+');
+                          if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+').hasMatch(value.trim())) {
+                            return 'Please enter a valid email address';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
                         controller: _passwordController,
                         decoration: const InputDecoration(
                           labelText: 'Password',
@@ -205,6 +233,20 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 // Features list
                 // Icons removed as requested
                 const SizedBox(height: 32),
+                  // Login Button
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const LoginScreen(),
+                        ),
+                      );
+                    },
+                    child: const Text(
+                      'Already have an account? Login',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                    ),
+                  ),
               ],
             ),
           ),

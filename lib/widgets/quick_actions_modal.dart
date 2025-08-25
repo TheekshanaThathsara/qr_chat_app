@@ -666,6 +666,7 @@ class _QRScannerModalState extends State<QRScannerModal> {
               final user = User(
                 id: userId,
                 username: username,
+                email: '', // TODO: Provide actual email if available
                 lastSeen: DateTime.now(),
                 isOnline: false,
               );
