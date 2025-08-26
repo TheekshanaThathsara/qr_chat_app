@@ -3,7 +3,7 @@ import 'package:camera/camera.dart';
 import 'dart:io';
 
 class CameraViewScreen extends StatefulWidget {
-  const CameraViewScreen({Key? key}) : super(key: key);
+  const CameraViewScreen({super.key});
 
   @override
   State<CameraViewScreen> createState() => _CameraViewScreenState();

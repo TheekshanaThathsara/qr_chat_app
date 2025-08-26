@@ -189,15 +189,31 @@ class FirebaseAuthService {
             lastSeen: DateTime.now(),
             isOnline: true,
           );
-          await _databaseService.saveUser(appUser);
+          try {
+            await _databaseService.saveUser(appUser);
+          } catch (e) {
+            debugPrint(
+              'Warning: failed to save appUser locally on sign in: $e',
+            );
+          }
         } else {
           // Update last seen and online status
           appUser = appUser.copyWith(lastSeen: DateTime.now(), isOnline: true);
-          await _databaseService.saveUser(appUser);
+          try {
+            await _databaseService.saveUser(appUser);
+          } catch (e) {
+            debugPrint(
+              'Warning: failed to update appUser locally on sign in: $e',
+            );
+          }
         }
 
-        // Update Firebase user data
-        await _firebaseService.saveUserToFirebase(appUser);
+        // Update Firebase user data (best-effort)
+        try {
+          await _firebaseService.saveUserToFirebase(appUser);
+        } catch (e) {
+          debugPrint('Warning: failed to save user to Firebase on sign in: $e');
+        }
 
         return appUser;
       }
@@ -267,25 +283,69 @@ class FirebaseAuthService {
 
   // Sign out
   Future<void> signOut() async {
+    // We'll try to update remote/local state but always attempt Firebase signOut in finally
+    Exception? lastError;
     try {
       // Update user offline status before signing out
       final user = currentUser;
       if (user != null) {
-        final appUser = await _databaseService.getUser(user.uid);
+        final appUser = await _databaseService
+            .getUser(user.uid)
+            .timeout(
+              const Duration(seconds: 8),
+              onTimeout: () {
+                debugPrint('Timeout while getting local user before signOut');
+                throw Exception('Timeout getting local user');
+              },
+            );
         if (appUser != null) {
           final updatedUser = appUser.copyWith(
             lastSeen: DateTime.now(),
             isOnline: false,
           );
-          await _firebaseService.saveUserToFirebase(updatedUser);
-          await _databaseService.saveUser(updatedUser);
+
+          try {
+            await _firebaseService
+                .saveUserToFirebase(updatedUser)
+                .timeout(const Duration(seconds: 8));
+          } catch (e) {
+            debugPrint(
+              'Warning: Failed to save user to Firebase during signOut: $e',
+            );
+            lastError = Exception('Firebase save error: $e');
+          }
+
+          try {
+            await _databaseService
+                .saveUser(updatedUser)
+                .timeout(const Duration(seconds: 6));
+          } catch (e) {
+            debugPrint(
+              'Warning: Failed to save user locally during signOut: $e',
+            );
+            lastError = Exception('Local save error: $e');
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Non-fatal error preparing signOut updates: $e');
+      lastError = Exception('Preparation error: $e');
+    } finally {
+      try {
+        // Ensure auth signOut is attempted and completes within a reasonable time
+        await _auth.signOut().timeout(const Duration(seconds: 8));
+      } catch (e) {
+        debugPrint('Error calling FirebaseAuth.signOut(): $e');
+        if (lastError == null) {
+          lastError = Exception('Auth signOut error: $e');
         }
       }
 
-      await _auth.signOut();
-    } catch (e) {
-      debugPrint('Error signing out: $e');
-      rethrow;
+      if (lastError != null) {
+        // Surface a non-fatal exception to caller while ensuring signOut was attempted
+        // Caller (UserProvider.logout) will ignore these errors but they are logged here
+        debugPrint('signOut completed with warnings: ${lastError.toString()}');
+      }
     }
   }
 

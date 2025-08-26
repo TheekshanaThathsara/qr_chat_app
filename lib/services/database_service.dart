@@ -19,7 +19,7 @@ class DatabaseService {
 
   static Database? _database;
   static const String _databaseName = 'instant_chat.db';
-  static const int _databaseVersion = 2;
+  static const int _databaseVersion = 3;
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -71,11 +71,12 @@ class DatabaseService {
       )
     ''');
 
-    // Create users table
+    // Create users table (now includes email)
     await db.execute('''
       CREATE TABLE users (
         id TEXT PRIMARY KEY,
         username TEXT NOT NULL,
+        email TEXT NOT NULL,
         profile_image TEXT,
         last_seen TEXT NOT NULL,
         is_online INTEGER NOT NULL DEFAULT 0
@@ -101,6 +102,15 @@ class DatabaseService {
       await db.execute(
         'ALTER TABLE messages ADD COLUMN synced INTEGER NOT NULL DEFAULT 0',
       );
+    }
+    // Version 3: add email column to users table if missing
+    if (oldVersion < 3) {
+      try {
+        await db.execute('ALTER TABLE users ADD COLUMN email TEXT DEFAULT ""');
+      } catch (e) {
+        // If the column already exists or alter failed, log and continue
+        // (Some devices may already have this column)
+      }
     }
   }
 
@@ -290,6 +300,7 @@ class DatabaseService {
     final db = await database;
     await db.insert('users', {
       'id': user.id,
+      'email': user.email,
       'username': user.username,
       'profile_image': user.profileImage,
       'last_seen': user.lastSeen.toIso8601String(),
@@ -308,6 +319,7 @@ class DatabaseService {
     if (maps.isNotEmpty) {
       return User.fromJson({
         'id': maps[0]['id'],
+        'email': maps[0]['email'],
         'username': maps[0]['username'],
         'profileImage': maps[0]['profile_image'],
         'lastSeen': maps[0]['last_seen'],
