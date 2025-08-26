@@ -4,9 +4,31 @@ import 'package:instant_chat_app/models/message.dart';
 import 'package:instant_chat_app/models/user.dart';
 import 'package:instant_chat_app/services/database_service.dart';
 import 'package:instant_chat_app/services/socket_service.dart';
+import 'package:instant_chat_app/services/firebase_service.dart';
 import 'package:uuid/uuid.dart';
+import 'dart:async';
 
 class ChatProvider with ChangeNotifier {
+  final DatabaseService _databaseService = DatabaseService();
+  final SocketService _socketService = SocketService();
+  final FirebaseService _firebaseService = FirebaseService();
+  final Uuid _uuid = const Uuid();
+
+  List<ChatRoom> _chatRooms = [];
+  List<Message> _currentMessages = [];
+  ChatRoom? _currentChatRoom;
+  bool _isLoading = false;
+  bool _isConnected = false;
+  StreamSubscription<List<Message>>? _messageSubscription;
+  bool _isOnline = false;
+
+  List<ChatRoom> get chatRooms => _chatRooms;
+  List<Message> get currentMessages => _currentMessages;
+  ChatRoom? get currentChatRoom => _currentChatRoom;
+  bool get isLoading => _isLoading;
+  bool get isConnected => _isConnected;
+  bool get isOnline => _isOnline;
+
   Future<void> deleteChatRoom(String chatRoomId) async {
     try {
       await _databaseService.deleteChatRoom(chatRoomId);
@@ -17,22 +39,6 @@ class ChatProvider with ChangeNotifier {
     }
   }
 
-  final DatabaseService _databaseService = DatabaseService();
-  final SocketService _socketService = SocketService();
-  final Uuid _uuid = const Uuid();
-
-  List<ChatRoom> _chatRooms = [];
-  List<Message> _currentMessages = [];
-  ChatRoom? _currentChatRoom;
-  bool _isLoading = false;
-  bool _isConnected = false;
-
-  List<ChatRoom> get chatRooms => _chatRooms;
-  List<Message> get currentMessages => _currentMessages;
-  ChatRoom? get currentChatRoom => _currentChatRoom;
-  bool get isLoading => _isLoading;
-  bool get isConnected => _isConnected;
-
   Future<void> initializeChat(User currentUser) async {
     _isLoading = true;
     notifyListeners();
@@ -40,12 +46,17 @@ class ChatProvider with ChangeNotifier {
     try {
       await _databaseService.initializeDatabase();
 
-      // Commented out socket connection for now
-      // await _socketService.connect(currentUser);
-      // _socketService.onMessageReceived = _onMessageReceived;
-      // _socketService.onUserJoined = _onUserJoined;
-      // _socketService.onUserLeft = _onUserLeft;
-      // _socketService.onConnectionChanged = _onConnectionChanged;
+      // Sync unsynced messages when coming online
+      await _syncUnsyncedMessages();
+
+      // Listen to Firebase connection status
+      _firebaseService.connectionStatus.listen((isOnline) {
+        _isOnline = isOnline;
+        if (isOnline) {
+          _syncUnsyncedMessages();
+        }
+        notifyListeners();
+      });
 
       await loadChatRooms();
       _isConnected = false; // Set to false since no socket connection
@@ -157,8 +168,20 @@ class ChatProvider with ChangeNotifier {
         fileName: fileName,
       );
 
-      await _databaseService.saveMessage(message);
+      // Always save to SQLite first (for offline support)
+      await _databaseService.saveMessage(message, synced: false);
       _currentMessages.add(message);
+
+      // Try to send to Firebase if online
+      if (_isOnline) {
+        try {
+          await _firebaseService.sendMessageToFirebase(message);
+          // Mark as synced if successful
+          await _databaseService.markMessageAsSynced(message.id);
+        } catch (e) {
+          debugPrint('Failed to send to Firebase, will sync later: $e');
+        }
+      }
 
       // Update last message in chat room
       final updatedChatRoom = _currentChatRoom!.copyWith(lastMessage: message);
@@ -180,12 +203,49 @@ class ChatProvider with ChangeNotifier {
   }
 
   void setCurrentChatRoom(ChatRoom? chatRoom) {
+    // Cancel previous subscription if any
+    _messageSubscription?.cancel();
+
     _currentChatRoom = chatRoom;
     if (chatRoom != null) {
       loadMessages(chatRoom.id);
-      // _socketService.joinRoom(chatRoom.id); // Commented out for now
+
+      // Listen to Firebase messages in real-time when online
+      if (_isOnline) {
+        _messageSubscription = _firebaseService
+            .listenToMessages(chatRoom.id)
+            .listen(
+              (firebaseMessages) async {
+                // Update local SQLite with Firebase messages
+                for (var message in firebaseMessages) {
+                  await _databaseService.saveMessage(message, synced: true);
+                }
+                // Reload messages from SQLite for consistency
+                await loadMessages(chatRoom.id);
+              },
+              onError: (error) {
+                debugPrint('Error listening to Firebase messages: $error');
+              },
+            );
+      }
     }
     notifyListeners();
+  }
+
+  Future<void> _syncUnsyncedMessages() async {
+    try {
+      final unsyncedMessages = await _databaseService.getUnsyncedMessages();
+      if (unsyncedMessages.isNotEmpty) {
+        await _firebaseService.syncUnsyncedMessages(unsyncedMessages);
+        // Mark all as synced
+        for (var message in unsyncedMessages) {
+          await _databaseService.markMessageAsSynced(message.id);
+        }
+        debugPrint('Synced ${unsyncedMessages.length} unsynced messages');
+      }
+    } catch (e) {
+      debugPrint('Error syncing unsynced messages: $e');
+    }
   }
 
   // Commented out socket-related methods for now
@@ -224,6 +284,7 @@ class ChatProvider with ChangeNotifier {
   */
 
   Future<void> disconnect() async {
+    _messageSubscription?.cancel();
     // await _socketService.disconnect(); // Commented out for now
     _isConnected = false;
     notifyListeners();
@@ -231,6 +292,7 @@ class ChatProvider with ChangeNotifier {
 
   @override
   void dispose() {
+    _messageSubscription?.cancel();
     _socketService.disconnect();
     super.dispose();
   }

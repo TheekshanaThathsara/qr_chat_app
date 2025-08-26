@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:instant_chat_app/providers/user_provider.dart';
-import 'package:instant_chat_app/screens/welcome_screen.dart';
+import 'package:instant_chat_app/screens/auth_screen.dart';
 import 'package:instant_chat_app/screens/home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -43,7 +43,7 @@ class _SplashScreenState extends State<SplashScreen>
           MaterialPageRoute(
             builder: (context) => userProvider.isLoggedIn
                 ? const HomeScreen()
-                : const WelcomeScreen(),
+                : const AuthScreen(),
           ),
         );
       }

@@ -68,7 +68,7 @@ class _QuickActionsModalState extends State<QuickActionsModal> {
                   decoration: BoxDecoration(
                     color: Theme.of(
                       context,
-                    ).colorScheme.primary.withOpacity(0.1),
+                    ).colorScheme.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
@@ -130,7 +130,7 @@ class _QuickActionsModalState extends State<QuickActionsModal> {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.orange.withOpacity(0.1),
+                            color: Colors.orange.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
@@ -191,7 +191,7 @@ class _QuickActionsModalState extends State<QuickActionsModal> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, color: color, size: 24),
@@ -325,7 +325,7 @@ class _QuickActionsModalState extends State<QuickActionsModal> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.1),
+                      color: Colors.green.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
@@ -364,7 +364,7 @@ class _QuickActionsModalState extends State<QuickActionsModal> {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color: Colors.black.withValues(alpha: 0.1),
                       blurRadius: 10,
                       spreadRadius: 2,
                     ),
@@ -506,7 +506,7 @@ class _QRScannerModalState extends State<QRScannerModal> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
+                    color: Colors.blue.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(
@@ -606,6 +606,7 @@ class _QRScannerModalState extends State<QRScannerModal> {
         // Check if already a contact
         final isContact = await _databaseService.isContactExists(userId);
 
+        if (!mounted) return;
         if (isContact) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('$username is already in your contacts')),
@@ -713,11 +714,14 @@ class _QRScannerModalState extends State<QRScannerModal> {
       if (userProvider.currentUser != null) {
         await chatProvider.joinChatRoom(roomId, userProvider.currentUser!);
 
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Joined chat room successfully')),
         );
+        Navigator.of(context).pop();
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Failed to join room: $e')));
@@ -771,7 +775,7 @@ class _ContactsModalState extends State<ContactsModal> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.1),
+                    color: Colors.orange.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(
@@ -962,10 +966,12 @@ class _ContactsModalState extends State<ContactsModal> {
       try {
         await _databaseService.deleteContact(contact.id);
         widget.onContactsChanged();
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('${contact.username} removed from contacts')),
         );
       } catch (e) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Failed to delete contact')),
         );

@@ -19,7 +19,7 @@ class DatabaseService {
 
   static Database? _database;
   static const String _databaseName = 'instant_chat.db';
-  static const int _databaseVersion = 1;
+  static const int _databaseVersion = 2;
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -33,6 +33,7 @@ class DatabaseService {
       path,
       version: _databaseVersion,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
   }
 
@@ -65,6 +66,7 @@ class DatabaseService {
         is_read INTEGER NOT NULL DEFAULT 0,
         image_url TEXT,
         file_name TEXT,
+        synced INTEGER NOT NULL DEFAULT 0,
         FOREIGN KEY (chat_room_id) REFERENCES chat_rooms (id)
       )
     ''');
@@ -91,6 +93,15 @@ class DatabaseService {
         isBlocked INTEGER NOT NULL DEFAULT 0
       )
     ''');
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Add synced column to messages table
+      await db.execute(
+        'ALTER TABLE messages ADD COLUMN synced INTEGER NOT NULL DEFAULT 0',
+      );
+    }
   }
 
   Future<void> initializeDatabase() async {
@@ -187,7 +198,7 @@ class DatabaseService {
   }
 
   // Message operations
-  Future<void> saveMessage(Message message) async {
+  Future<void> saveMessage(Message message, {bool synced = false}) async {
     final db = await database;
     await db.insert('messages', {
       'id': message.id,
@@ -200,6 +211,7 @@ class DatabaseService {
       'is_read': message.isRead ? 1 : 0,
       'image_url': message.imageUrl,
       'file_name': message.fileName,
+      'synced': synced ? 1 : 0,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
@@ -236,6 +248,41 @@ class DatabaseService {
       where: 'id = ?',
       whereArgs: [messageId],
     );
+  }
+
+  Future<void> markMessageAsSynced(String messageId) async {
+    final db = await database;
+    await db.update(
+      'messages',
+      {'synced': 1},
+      where: 'id = ?',
+      whereArgs: [messageId],
+    );
+  }
+
+  Future<List<Message>> getUnsyncedMessages() async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'messages',
+      where: 'synced = ?',
+      whereArgs: [0],
+      orderBy: 'timestamp ASC',
+    );
+
+    return List.generate(maps.length, (i) {
+      return Message.fromJson({
+        'id': maps[i]['id'],
+        'chatRoomId': maps[i]['chat_room_id'],
+        'senderId': maps[i]['sender_id'],
+        'senderName': maps[i]['sender_name'],
+        'content': maps[i]['content'],
+        'type': maps[i]['type'],
+        'timestamp': maps[i]['timestamp'],
+        'isRead': maps[i]['is_read'] == 1,
+        'imageUrl': maps[i]['image_url'],
+        'fileName': maps[i]['file_name'],
+      });
+    });
   }
 
   // User operations
