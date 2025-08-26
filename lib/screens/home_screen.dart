@@ -6,7 +6,6 @@ import 'package:instant_chat_app/screens/qr_scanner_screen.dart';
 import 'package:instant_chat_app/screens/chat_screen.dart';
 import 'package:instant_chat_app/screens/profile_screen.dart';
 import 'package:instant_chat_app/screens/settings_screen.dart';
-import 'package:instant_chat_app/screens/welcome_screen.dart';
 import 'package:instant_chat_app/screens/camera_view_screen.dart';
 import 'package:instant_chat_app/widgets/chat_room_tile.dart';
 import 'package:instant_chat_app/widgets/quick_actions_modal.dart';

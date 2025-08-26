@@ -173,22 +173,37 @@ class UserProvider with ChangeNotifier {
   }
 
   Future<void> logout() async {
-    try {
-      // Disconnect chat before logging out
-      if (onUserLogout != null) {
+    // Disconnect chat before logging out
+    if (onUserLogout != null) {
+      try {
         onUserLogout!();
+      } catch (e) {
+        debugPrint('Error during onUserLogout callback: $e');
       }
-
-      // Sign out from Firebase
-      await _authService.signOut();
-
-      await _storageService.clearCurrentUser();
-      _currentUser = null;
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error logging out: $e');
-      rethrow;
     }
+
+    // Attempt to sign out but don't let a failing sign-out block clearing local state
+    try {
+      await _authService.signOut().timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          debugPrint('Timeout while signing out from auth service');
+          throw 'Sign out timed out';
+        },
+      );
+    } catch (e) {
+      // Log and continue: ensure local state is cleared so UI can navigate away
+      debugPrint('Error during authService.signOut (ignored): $e');
+    }
+
+    try {
+      await _storageService.clearCurrentUser();
+    } catch (e) {
+      debugPrint('Error clearing local storage during logout: $e');
+    }
+
+    _currentUser = null;
+    notifyListeners();
   }
 
   void updateOnlineStatus(bool isOnline) {

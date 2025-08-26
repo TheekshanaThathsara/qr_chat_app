@@ -120,7 +120,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
 
   Widget _buildOverlay() {
     return Container(
-      decoration: ShapeDecoration(
+      decoration: const ShapeDecoration(
         shape: QrScannerOverlayShape(
           borderColor: Colors.white,
           borderRadius: 10,

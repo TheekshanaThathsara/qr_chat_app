@@ -34,30 +34,25 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     });
 
     try {
-      debugPrint('📱 Starting user creation process...');
       final userProvider = Provider.of<UserProvider>(context, listen: false);
-
-      debugPrint('📱 Calling userProvider.signUp...');
-      await userProvider.signUp(
+      // You may need to update createUser to accept email and password if needed
+      await userProvider.createUser(
+        _usernameController.text.trim(),
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
-        username: _usernameController.text.trim(),
       );
 
-      debugPrint('📱 Sign up successful! Navigating to home screen...');
       if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => const HomeScreen()),
         );
       }
     } catch (e) {
-      debugPrint('📱 Sign up error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error creating user: $e'),
             backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
           ),
         );
       }

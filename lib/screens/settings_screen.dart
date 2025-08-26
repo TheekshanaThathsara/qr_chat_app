@@ -168,6 +168,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   });
                   Navigator.of(context).pop();
                 },
+                toggleable: true,
               ),
               RadioListTile<String>(
                 title: const Text('Dark'),
@@ -179,6 +180,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   });
                   Navigator.of(context).pop();
                 },
+                toggleable: true,
               ),
               RadioListTile<String>(
                 title: const Text('System'),
@@ -190,6 +192,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   });
                   Navigator.of(context).pop();
                 },
+                toggleable: true,
               ),
             ],
           ),
