@@ -336,9 +336,7 @@ class FirebaseAuthService {
         await _auth.signOut().timeout(const Duration(seconds: 8));
       } catch (e) {
         debugPrint('Error calling FirebaseAuth.signOut(): $e');
-        if (lastError == null) {
-          lastError = Exception('Auth signOut error: $e');
-        }
+        lastError ??= Exception('Auth signOut error: $e');
       }
 
       if (lastError != null) {

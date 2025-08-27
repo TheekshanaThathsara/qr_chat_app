@@ -182,7 +182,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                                 borderRadius:
                                                     BorderRadius.circular(8),
                                                 child: QrImageView(
-                                                  data: 'user:${user.id}',
+                                                  data:
+                                                      'user:${user.id}:${user.username}',
                                                   version: QrVersions.auto,
                                                   size: 200.0,
                                                   backgroundColor: Colors.white,

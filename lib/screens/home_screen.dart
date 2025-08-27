@@ -5,6 +5,11 @@ import 'package:instant_chat_app/providers/chat_provider.dart';
 import 'package:instant_chat_app/screens/qr_scanner_screen.dart';
 import 'package:instant_chat_app/screens/chat_screen.dart';
 import 'package:instant_chat_app/screens/profile_screen.dart';
+import 'package:instant_chat_app/services/database_service.dart';
+import 'package:instant_chat_app/services/firebase_service.dart';
+import 'package:instant_chat_app/models/user.dart';
+import 'package:instant_chat_app/models/contact.dart';
+import 'package:uuid/uuid.dart';
 import 'package:instant_chat_app/screens/settings_screen.dart';
 import 'package:instant_chat_app/screens/camera_view_screen.dart';
 import 'package:instant_chat_app/widgets/chat_room_tile.dart';
@@ -114,6 +119,138 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ).showSnackBar(SnackBar(content: Text('Failed to join room: $e')));
         }
       }
+    } else if (qrData.startsWith('user:')) {
+      final parts = qrData.split(':');
+      if (parts.length >= 2) {
+        final userId = parts[1];
+        final username = parts.length >= 3 ? parts[2] : '';
+
+        final firebaseService = FirebaseService();
+        final databaseService = DatabaseService();
+
+        try {
+          // Try to fetch remote user
+          User? remoteUser;
+          try {
+            remoteUser = await firebaseService.fetchUserById(userId);
+          } catch (e) {
+            debugPrint('Error fetching user by id: $e');
+          }
+
+          final effectiveUser =
+              remoteUser ??
+              User(
+                id: userId,
+                username: username,
+                email: '',
+                lastSeen: DateTime.now(),
+                isOnline: false,
+              );
+
+          if (remoteUser == null) {
+            try {
+              final toSave = effectiveUser.copyWith(
+                username: effectiveUser.username.isNotEmpty
+                    ? effectiveUser.username
+                    : 'Unknown',
+              );
+              await firebaseService.saveUserToFirebase(toSave);
+            } catch (e) {
+              debugPrint('Failed to create minimal Firestore user: $e');
+            }
+          }
+
+          // Check contact exists
+          final isContact = await databaseService.isContactExists(
+            effectiveUser.id,
+          );
+          if (isContact) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    '${effectiveUser.username} is already in your contacts',
+                  ),
+                ),
+              );
+            }
+            return;
+          }
+
+          // Add contact and start chat
+          final contact = Contact(
+            id: const Uuid().v4(),
+            userId: effectiveUser.id,
+            username: effectiveUser.username,
+            profileImage: effectiveUser.profileImage,
+            addedAt: DateTime.now(),
+          );
+
+          await databaseService.addContact(contact);
+
+          final userProvider = Provider.of<UserProvider>(
+            context,
+            listen: false,
+          );
+          final chatProvider = Provider.of<ChatProvider>(
+            context,
+            listen: false,
+          );
+
+          if (userProvider.currentUser == null) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Please sign in to start a chat')),
+              );
+            }
+            return;
+          }
+
+          // Try to reuse existing private room
+          final existing = await databaseService.getPrivateRoomBetweenUsers(
+            userProvider.currentUser!.id,
+            effectiveUser.id,
+          );
+
+          if (existing != null) {
+            if (!mounted) return;
+            Navigator.of(context, rootNavigator: true).push(
+              MaterialPageRoute(
+                builder: (context) => ChatScreen(chatRoom: existing),
+              ),
+            );
+            return;
+          }
+
+          final roomName = 'Chat with ${effectiveUser.username}';
+          final chatRoom = await chatProvider.createChatRoom(
+            name: roomName,
+            creator: userProvider.currentUser!,
+            isPrivate: true,
+          );
+
+          await chatProvider.joinChatRoom(chatRoom.id, effectiveUser);
+
+          if (!mounted) return;
+          Navigator.of(context, rootNavigator: true).push(
+            MaterialPageRoute(
+              builder: (context) => ChatScreen(chatRoom: chatRoom),
+            ),
+          );
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Failed to process user QR: $e')),
+            );
+          }
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Invalid QR code')));
+        }
+      }
     } else {
       ScaffoldMessenger.of(
         context,
@@ -122,7 +259,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   void _openChatRoom(chatRoom) {
-    Navigator.of(context).push(
+    Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute(builder: (context) => ChatScreen(chatRoom: chatRoom)),
     );
   }
@@ -323,7 +460,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         child: const Icon(Icons.add),
       ),
       bottomNavigationBar: Container(
-  padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 24),
+        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 24),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.primary,
           border: Border(

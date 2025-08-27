@@ -5,10 +5,13 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../models/contact.dart';
 import '../models/user.dart';
+import '../models/chat_room.dart';
 import '../providers/user_provider.dart';
 import '../providers/chat_provider.dart';
 import '../services/database_service.dart';
+import '../services/firebase_service.dart';
 import '../screens/create_room_screen.dart';
+import '../screens/chat_screen.dart';
 
 class QuickActionsModal extends StatefulWidget {
   const QuickActionsModal({super.key});
@@ -25,6 +28,23 @@ class _QuickActionsModalState extends State<QuickActionsModal> {
   void initState() {
     super.initState();
     _loadContacts();
+  }
+
+  Future<void> _safeMaybePop([dynamic result]) async {
+    try {
+      if (Navigator.canPop(context)) {
+        await Navigator.of(context).maybePop(result);
+        return;
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    try {
+      await Navigator.of(context, rootNavigator: true).maybePop(result);
+    } catch (e) {
+      debugPrint('safeMaybePop failed: $e');
+    }
   }
 
   Future<void> _loadContacts() async {
@@ -295,7 +315,7 @@ class _QuickActionsModalState extends State<QuickActionsModal> {
   }
 
   void _navigateToScanner() {
-    Navigator.of(context).pop();
+    _safeMaybePop();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -307,7 +327,7 @@ class _QuickActionsModalState extends State<QuickActionsModal> {
   }
 
   void _showMyQRCode() {
-    Navigator.of(context).pop();
+    _safeMaybePop();
     final user = Provider.of<UserProvider>(context, listen: false).currentUser;
     if (user == null) return;
 
@@ -430,7 +450,7 @@ class _QuickActionsModalState extends State<QuickActionsModal> {
   }
 
   void _showContacts() {
-    Navigator.of(context).pop();
+    _safeMaybePop();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -443,7 +463,7 @@ class _QuickActionsModalState extends State<QuickActionsModal> {
   }
 
   void _createChatRoom() {
-    Navigator.of(context).pop();
+    _safeMaybePop();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -477,6 +497,23 @@ class QRScannerModal extends StatefulWidget {
 
 class _QRScannerModalState extends State<QRScannerModal> {
   final DatabaseService _databaseService = DatabaseService();
+
+  Future<void> _safeMaybePop([dynamic result]) async {
+    try {
+      if (Navigator.canPop(context)) {
+        await Navigator.of(context).maybePop(result);
+        return;
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    try {
+      await Navigator.of(context, rootNavigator: true).maybePop(result);
+    } catch (e) {
+      debugPrint('safeMaybePop failed: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -595,90 +632,123 @@ class _QRScannerModalState extends State<QRScannerModal> {
   }
 
   Future<void> _handleQRResult(String qrData) async {
-    Navigator.of(context).pop(); // Close scanner
+    // Do not pop immediately - keep this widget's context mounted while
+    // we perform async work. We'll close the scanner only when needed and
+    // push using the root navigator to avoid using a disposed context.
 
     if (qrData.startsWith('user:')) {
-      final parts = qrData.split(':');
-      if (parts.length >= 3) {
-        final userId = parts[1];
-        final username = parts[2];
+      try {
+        final parts = qrData.split(':');
+        // Accept both formats: 'user:{id}' and 'user:{id}:{username}'
+        if (parts.length >= 2) {
+          final userId = parts[1];
+          final username = parts.length >= 3 ? parts[2] : '';
 
-        // Check if already a contact
-        final isContact = await _databaseService.isContactExists(userId);
+          // Try to fetch authoritative user record from Firebase
+          final firebaseService = FirebaseService();
+          User? remoteUser;
+          try {
+            remoteUser = await firebaseService.fetchUserById(userId);
+          } catch (e) {
+            debugPrint('Error fetching user by id: $e');
+          }
 
-        if (!mounted) return;
-        if (isContact) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('$username is already in your contacts')),
+          // If remote user exists, use it; otherwise fall back to scanned data
+          final effectiveUser =
+              remoteUser ??
+              User(
+                id: userId,
+                username: username.isNotEmpty
+                    ? username
+                    : (remoteUser?.username ?? ''),
+                email: '',
+                lastSeen: DateTime.now(),
+                isOnline: false,
+              );
+
+          // If the user didn't have a Firestore doc, try to create a minimal one
+          if (remoteUser == null) {
+            try {
+              // Ensure we have at least a sensible username to store
+              final toSave = effectiveUser.copyWith(
+                username: effectiveUser.username.isNotEmpty
+                    ? effectiveUser.username
+                    : 'Unknown',
+              );
+              await FirebaseService().saveUserToFirebase(toSave);
+              debugPrint(
+                'Created minimal Firestore user for scanned id=${toSave.id}',
+              );
+            } catch (e) {
+              debugPrint('Failed to create minimal Firestore user: $e');
+            }
+          }
+
+          // Check if already a contact
+          final isContact = await _databaseService.isContactExists(
+            effectiveUser.id,
           );
-          return;
-        }
 
-        // Show add contact dialog
-        _showAddContactDialog(userId, username);
+          if (!mounted) return;
+          if (isContact) {
+            // Notify user and then close scanner and navigate to existing chat
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  '${effectiveUser.username} is already in your contacts — opening chat...',
+                ),
+              ),
+            );
+            // Close scanner if open and navigate to existing chat (reuse room if present)
+            await _safeMaybePop();
+            // Try to reuse existing private room and open chat
+            await _createPrivateChatWithUser(effectiveUser);
+            return;
+          }
+
+          // Not a contact: close scanner, add contact and immediately open chat
+          await _safeMaybePop();
+          await _addContact(effectiveUser);
+        }
+      } catch (e, st) {
+        debugPrint('Error processing user QR: $e\n$st');
+        if (!mounted) return;
+        // Show a clear popup so the user sees the exact error
+        try {
+          await showDialog<void>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Failed to process user QR'),
+              content: Text('Failed to process user QR: ${e.toString()}'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        } catch (dialogError) {
+          // Fallback to snackbar if dialog fails
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to process user QR: $e')),
+          );
+        }
       }
     } else if (qrData.startsWith('room:')) {
       final roomId = qrData.substring(5);
+      // Close scanner before joining room
+      await _safeMaybePop();
       await _handleRoomQR(roomId);
     } else {
+      await _safeMaybePop();
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Invalid QR code')));
     }
   }
 
-  void _showAddContactDialog(String userId, String username) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Add Contact'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircleAvatar(
-              radius: 30,
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              child: Text(
-                username.isNotEmpty ? username[0].toUpperCase() : 'U',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 24,
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Add $username to your contacts?',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.of(context).pop();
-              final user = User(
-                id: userId,
-                username: username,
-                email: '', // TODO: Provide actual email if available
-                lastSeen: DateTime.now(),
-                isOnline: false,
-              );
-              await _addContact(user);
-            },
-            child: const Text('Add Contact'),
-          ),
-        ],
-      ),
-    );
-  }
+  // ...existing code...
 
   Future<void> _addContact(User user) async {
     try {
@@ -696,6 +766,8 @@ class _QRScannerModalState extends State<QRScannerModal> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('${user.username} added to contacts')),
         );
+        // After adding contact, start a private chat with them
+        await _createPrivateChatWithUser(user);
       }
     } catch (e) {
       if (mounted) {
@@ -703,6 +775,105 @@ class _QRScannerModalState extends State<QRScannerModal> {
           context,
         ).showSnackBar(const SnackBar(content: Text('Failed to add contact')));
       }
+    }
+  }
+
+  Future<void> _createPrivateChatWithUser(User otherUser) async {
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+
+      final currentUser = userProvider.currentUser;
+      if (currentUser == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please sign in to start a chat')),
+          );
+        }
+        return;
+      }
+
+      // Try to find an existing private room between currentUser and otherUser
+      final existing = await _databaseService.getPrivateRoomBetweenUsers(
+        currentUser.id,
+        otherUser.id,
+      );
+
+      if (existing != null) {
+        // Ensure chat provider has the room loaded
+        await chatProvider.loadChatRooms();
+        if (!mounted) return;
+        // If this is a private room between two users, persist a friend-friendly name
+        ChatRoom displayRoom = existing;
+        try {
+          if (existing.isPrivate && existing.participants.length == 2) {
+            final other = existing.participants.firstWhere(
+              (p) => p.id != currentUser.id,
+              orElse: () => existing.participants.first,
+            );
+            final desiredName = other.username.isNotEmpty
+                ? 'Chat with ${other.username}'
+                : existing.name;
+            if (existing.name != desiredName) {
+              // Persist updated name and reload chat rooms so UI reflects it
+              displayRoom = existing.copyWith(name: desiredName);
+              try {
+                await _databaseService.saveChatRoom(displayRoom);
+                await chatProvider.loadChatRooms();
+              } catch (e) {
+                debugPrint('Failed to persist chat room name: $e');
+              }
+              try {
+                await FirebaseService().saveChatRoomToFirebase(displayRoom);
+              } catch (e) {
+                debugPrint('Failed to save chat room to Firebase: $e');
+              }
+            } else {
+              displayRoom = existing;
+            }
+          }
+        } catch (_) {}
+
+        Navigator.of(context, rootNavigator: true).push(
+          MaterialPageRoute(
+            builder: (context) => ChatScreen(chatRoom: displayRoom),
+          ),
+        );
+        return;
+      }
+
+      // Create a private chat room locally
+      final roomName = otherUser.username.isNotEmpty
+          ? 'Chat with ${otherUser.username}'
+          : 'Private Chat';
+      final chatRoom = await chatProvider.createChatRoom(
+        name: roomName,
+        creator: currentUser,
+        isPrivate: true,
+      );
+
+      // Add the other user as a participant
+      await chatProvider.joinChatRoom(chatRoom.id, otherUser);
+
+      // Re-fetch the saved room (so participants are up-to-date) and navigate
+      final updatedRoom = await _databaseService.getChatRoom(chatRoom.id);
+      final toOpen = updatedRoom ?? chatRoom;
+
+      try {
+        await FirebaseService().saveChatRoomToFirebase(toOpen);
+      } catch (e) {
+        debugPrint('Failed to save new chat room to Firebase: $e');
+      }
+      // Navigate to the chat screen
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).push(
+        MaterialPageRoute(builder: (context) => ChatScreen(chatRoom: toOpen)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to create chat: $e')));
     }
   }
 
@@ -715,10 +886,24 @@ class _QRScannerModalState extends State<QRScannerModal> {
         await chatProvider.joinChatRoom(roomId, userProvider.currentUser!);
 
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Joined chat room successfully')),
-        );
-        Navigator.of(context).pop();
+        // Fetch the chat room and navigate to ChatScreen
+        final joinedRoom = await _databaseService.getChatRoom(roomId);
+        if (joinedRoom != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Joined chat room successfully')),
+          );
+          try {
+            await FirebaseService().saveChatRoomToFirebase(joinedRoom);
+          } catch (e) {
+            debugPrint('Failed to save joined room to Firebase: $e');
+          }
+          Navigator.of(context, rootNavigator: true).push(
+            MaterialPageRoute(
+              builder: (context) => ChatScreen(chatRoom: joinedRoom),
+            ),
+          );
+          return;
+        }
       }
     } catch (e) {
       if (!mounted) return;

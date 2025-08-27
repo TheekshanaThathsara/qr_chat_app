@@ -7,6 +7,7 @@ import 'package:instant_chat_app/screens/splash_screen.dart';
 import 'package:instant_chat_app/utils/app_theme.dart';
 import 'package:instant_chat_app/utils/firebase_test.dart';
 import 'firebase_options.dart';
+import 'package:instant_chat_app/services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,6 +20,15 @@ void main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
     debugPrint('🚀 MAIN: ✅ Firebase initialized successfully');
+
+    // Initialize notifications (FCM)
+    try {
+      await NotificationService().init();
+      final token = await NotificationService().getToken();
+      debugPrint('FCM token: $token');
+    } catch (e) {
+      debugPrint('FCM init failed: $e');
+    }
 
     // Test Firebase connection
     debugPrint('🚀 MAIN: Running Firebase connection test...');

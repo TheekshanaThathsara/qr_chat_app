@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:instant_chat_app/providers/user_provider.dart';
 import 'package:instant_chat_app/screens/home_screen.dart';
 import 'package:instant_chat_app/screens/login_screen.dart';
@@ -34,30 +35,32 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     });
 
     try {
-      debugPrint('📱 Starting user creation process...');
       final userProvider = Provider.of<UserProvider>(context, listen: false);
 
-      debugPrint('📱 Calling userProvider.signUp...');
       await userProvider.signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
         username: _usernameController.text.trim(),
       );
 
-      debugPrint('📱 Sign up successful! Navigating to home screen...');
-      if (mounted) {
+      if (!mounted) return;
+
+      // After successful signup, show the user's QR so it is generated at signup time.
+      final currentUser = userProvider.currentUser;
+      if (currentUser != null) {
+        await _showQrForUser(currentUser);
+      } else {
+        // Fallback: navigate to home if user not available for some reason
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => const HomeScreen()),
         );
       }
     } catch (e) {
-      debugPrint('📱 Sign up error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error creating user: $e'),
             backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
           ),
         );
       }
@@ -70,8 +73,149 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     }
   }
 
+  Future<void> _showQrForUser(dynamic user) async {
+    // 'user' here is the app User model; we type as dynamic to avoid import cycles in this file.
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Your User QR Code'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Share this QR with others to add you as a contact'),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: 180,
+                height: 180,
+                child: QrImageView(
+                  data: 'user:${user.id}:${user.username}',
+                  version: QrVersions.auto,
+                  gapless: false,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                // After dismissing the QR dialog, navigate to Home
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (context) => const HomeScreen()),
+                );
+              },
+              child: const Text('Continue'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final userProvider = Provider.of<UserProvider>(context);
+    final currentUser = userProvider.currentUser;
+
+    if (currentUser != null) {
+      return Scaffold(
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 120,
+                        height: 120,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primary,
+                          borderRadius: BorderRadius.circular(60),
+                        ),
+                        child: Center(
+                          child: Text(
+                            currentUser.username.isNotEmpty
+                                ? currentUser.username[0].toUpperCase()
+                                : 'U',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 48,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        'Welcome back, ${currentUser.username}',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Ready to continue your conversations',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyLarge,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 32),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(
+                        builder: (context) => const HomeScreen(),
+                      ),
+                    );
+                  },
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 14),
+                    child: Text('Continue', style: TextStyle(fontSize: 16)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton(
+                  onPressed: () async {
+                    try {
+                      await userProvider.logout();
+                      if (mounted) {
+                        Navigator.of(context).pushReplacement(
+                          MaterialPageRoute(
+                            builder: (context) => const LoginScreen(),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Logout failed: $e')),
+                        );
+                      }
+                    }
+                  },
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 14),
+                    child: Text('Logout', style: TextStyle(fontSize: 16)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Sign-up form when not signed in
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
@@ -81,7 +225,6 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 32),
-                // App Logo and Title
                 Center(
                   child: Column(
                     children: [
@@ -95,7 +238,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                             BoxShadow(
                               color: Theme.of(
                                 context,
-                              ).colorScheme.primary.withValues(alpha: 0.3),
+                              ).colorScheme.primary.withOpacity(0.2),
                               blurRadius: 20,
                               offset: const Offset(0, 10),
                             ),
@@ -121,14 +264,13 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           color: Theme.of(
                             context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.7),
+                          ).colorScheme.onSurface.withOpacity(0.7),
                         ),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 32),
-                // Username Form
                 Form(
                   key: _formKey,
                   child: Column(
@@ -237,10 +379,6 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 32),
-                // Features list
-                // Icons removed as requested
-                const SizedBox(height: 32),
-                // Login Button
                 TextButton(
                   onPressed: () {
                     Navigator.of(context).push(
