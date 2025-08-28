@@ -20,6 +20,9 @@ class ChatProvider with ChangeNotifier {
   bool _isLoading = false;
   bool _isConnected = false;
   StreamSubscription<List<Message>>? _messageSubscription;
+  StreamSubscription<List<ChatRoom>>? _roomsSubscription;
+  final Map<String, StreamSubscription<List<Message>>>
+  _roomMessageSubscriptions = {};
   bool _isOnline = false;
 
   List<ChatRoom> get chatRooms => _chatRooms;
@@ -50,10 +53,111 @@ class ChatProvider with ChangeNotifier {
       await _syncUnsyncedMessages();
 
       // Listen to Firebase connection status
-      _firebaseService.connectionStatus.listen((isOnline) {
+      _firebaseService.connectionStatus.listen((isOnline) async {
         _isOnline = isOnline;
         if (isOnline) {
-          _syncUnsyncedMessages();
+          await _syncUnsyncedMessages();
+          // Start listening to remote chat room changes and sync them locally
+          try {
+            _roomsSubscription?.cancel();
+            _roomsSubscription = _firebaseService.listenToChatRooms().listen(
+              (remoteRooms) async {
+                try {
+                  // Save/merge each remote room into local DB
+                  for (var room in remoteRooms) {
+                    try {
+                      await _databaseService.saveChatRoom(room);
+
+                      // If the current user is a participant in this room,
+                      // fetch messages from Firebase and persist them locally
+                      try {
+                        // Extract participant ids robustly (User objects or maps)
+                        final participants = room.participants
+                            .map((p) {
+                              try {
+                                // If already a User object
+                                return (p as dynamic).id?.toString();
+                              } catch (_) {
+                                try {
+                                  return (p as Map)['id']?.toString() ??
+                                      (p as Map)['userId']?.toString();
+                                } catch (_) {
+                                  return null;
+                                }
+                              }
+                            })
+                            .whereType<String>()
+                            .toList();
+
+                        debugPrint(
+                          'Remote room ${room.id} participants: $participants',
+                        );
+                        if (participants.contains(currentUser.id)) {
+                          final remoteMessages = await _firebaseService
+                              .fetchMessages(room.id);
+                          for (var msg in remoteMessages) {
+                            try {
+                              await _databaseService.saveMessage(
+                                msg,
+                                synced: true,
+                              );
+                            } catch (e) {
+                              debugPrint(
+                                'Failed to save remote message locally: $e',
+                              );
+                            }
+                          }
+
+                          // Update chat room lastMessage if needed
+                          if (remoteMessages.isNotEmpty) {
+                            final latest = remoteMessages.last;
+                            final updatedRoom = room.copyWith(
+                              lastMessage: latest,
+                            );
+                            await _databaseService.saveChatRoom(updatedRoom);
+                            // If the user currently has this room open, reload messages
+                            if (_currentChatRoom?.id == room.id) {
+                              await loadMessages(room.id);
+                            }
+                          }
+                        }
+                      } catch (e) {
+                        debugPrint(
+                          'Error fetching messages for room ${room.id}: $e',
+                        );
+                      }
+                    } catch (e) {
+                      debugPrint('Failed to save remote chat room locally: $e');
+                    }
+                  }
+
+                  // Reload chat rooms from local DB to update UI
+                  await loadChatRooms();
+                } catch (e) {
+                  debugPrint('Error processing remote chat rooms: $e');
+                }
+              },
+              onError: (err) {
+                debugPrint('Error listening to remote chat rooms: $err');
+              },
+            );
+            // Ensure we have active message listeners for rooms the user is in
+            try {
+              final localRooms = await _databaseService.getChatRooms();
+              for (var room in localRooms) {
+                final participantIds = room.participants
+                    .map((p) => p.id)
+                    .toList();
+                if (participantIds.contains(currentUser.id)) {
+                  _ensureRoomMessageListener(room.id);
+                }
+              }
+            } catch (e) {
+              debugPrint('Failed to ensure per-room listeners: $e');
+            }
+          } catch (e) {
+            debugPrint('Failed to subscribe to remote chat rooms: $e');
+          }
         }
         notifyListeners();
       });
@@ -68,12 +172,60 @@ class ChatProvider with ChangeNotifier {
     }
   }
 
+  void _ensureRoomMessageListener(String roomId) {
+    if (_roomMessageSubscriptions.containsKey(roomId)) return;
+
+    try {
+      final sub = _firebaseService
+          .listenToMessages(roomId)
+          .listen(
+            (messages) async {
+              for (var m in messages) {
+                try {
+                  await _databaseService.saveMessage(m, synced: true);
+                } catch (e) {
+                  debugPrint(
+                    'Error saving incoming message for room $roomId: $e',
+                  );
+                }
+              }
+
+              // If current chat open, reload messages
+              if (_currentChatRoom?.id == roomId) {
+                await loadMessages(roomId);
+              }
+            },
+            onError: (err) {
+              debugPrint('Error listening to messages for $roomId: $err');
+            },
+          );
+
+      _roomMessageSubscriptions[roomId] = sub;
+    } catch (e) {
+      debugPrint('Failed to create message listener for $roomId: $e');
+    }
+  }
+
   Future<void> loadChatRooms() async {
     try {
       _chatRooms = await _databaseService.getChatRooms();
       notifyListeners();
     } catch (e) {
       debugPrint('Error loading chat rooms: $e');
+      try {
+        final raw = await _databaseService.getRawChatRooms();
+        debugPrint('Raw chat_rooms rows: ${raw.length}');
+        for (var r in raw.take(10)) {
+          debugPrint(r.toString());
+        }
+      } catch (er) {
+        debugPrint('Failed to dump raw chat rooms: $er');
+      }
+      try {
+        throw e;
+      } catch (st, _) {
+        debugPrint('Stack trace: $st');
+      }
     }
   }
 
@@ -187,6 +339,13 @@ class ChatProvider with ChangeNotifier {
       final updatedChatRoom = _currentChatRoom!.copyWith(lastMessage: message);
       await _databaseService.saveChatRoom(updatedChatRoom);
 
+      // Try to push updated chat room (with lastMessage) to Firebase so other users see it in their lists
+      try {
+        await _firebaseService.saveChatRoomToFirebase(updatedChatRoom);
+      } catch (e) {
+        debugPrint('Failed to save updated chat room to Firebase: $e');
+      }
+
       final index = _chatRooms.indexWhere(
         (room) => room.id == _currentChatRoom!.id,
       );
@@ -285,6 +444,13 @@ class ChatProvider with ChangeNotifier {
 
   Future<void> disconnect() async {
     _messageSubscription?.cancel();
+    // Cancel per-room subscriptions
+    for (var sub in _roomMessageSubscriptions.values) {
+      try {
+        await sub.cancel();
+      } catch (_) {}
+    }
+    _roomMessageSubscriptions.clear();
     // await _socketService.disconnect(); // Commented out for now
     _isConnected = false;
     notifyListeners();
@@ -293,6 +459,13 @@ class ChatProvider with ChangeNotifier {
   @override
   void dispose() {
     _messageSubscription?.cancel();
+    _roomsSubscription?.cancel();
+    for (var sub in _roomMessageSubscriptions.values) {
+      try {
+        sub.cancel();
+      } catch (_) {}
+    }
+    _roomMessageSubscriptions.clear();
     _socketService.disconnect();
     super.dispose();
   }

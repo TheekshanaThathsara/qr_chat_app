@@ -74,8 +74,34 @@ class FirebaseService {
         .orderBy('timestamp')
         .snapshots()
         .map(
-          (snapshot) =>
-              snapshot.docs.map((doc) => Message.fromJson(doc.data())).toList(),
+          (snapshot) => snapshot.docs.map((doc) {
+            final raw = <String, dynamic>{};
+            try {
+              raw.addAll(doc.data());
+            } catch (_) {}
+
+            // Normalize fields
+            final normalized = <String, dynamic>{
+              'id': raw['id'] ?? doc.id,
+              'chatRoomId': raw['chatRoomId'] ?? raw['chat_room_id'],
+              'senderId': raw['senderId'] ?? raw['sender_id'],
+              'senderName':
+                  raw['senderName'] ?? raw['sender_name'] ?? raw['sender'],
+              'content': raw['content'] ?? '',
+              'type': raw['type'] is int
+                  ? raw['type']
+                  : int.tryParse(raw['type']?.toString() ?? '') ?? 0,
+              'timestamp': raw['timestamp'] is String
+                  ? raw['timestamp']
+                  : (raw['timestamp']?.toString() ??
+                        DateTime.now().toIso8601String()),
+              'isRead': raw['isRead'] == true || raw['is_read'] == 1,
+              'imageUrl': raw['imageUrl'] ?? raw['image_url'],
+              'fileName': raw['fileName'] ?? raw['file_name'],
+            };
+
+            return Message.fromJson(normalized);
+          }).toList(),
         );
   }
 
@@ -87,9 +113,33 @@ class FirebaseService {
           .orderBy('timestamp')
           .get();
 
-      return querySnapshot.docs
-          .map((doc) => Message.fromJson(doc.data()))
-          .toList();
+      return querySnapshot.docs.map((doc) {
+        final raw = <String, dynamic>{};
+        try {
+          raw.addAll(doc.data());
+        } catch (_) {}
+
+        final normalized = <String, dynamic>{
+          'id': raw['id'] ?? doc.id,
+          'chatRoomId': raw['chatRoomId'] ?? raw['chat_room_id'],
+          'senderId': raw['senderId'] ?? raw['sender_id'],
+          'senderName':
+              raw['senderName'] ?? raw['sender_name'] ?? raw['sender'],
+          'content': raw['content'] ?? '',
+          'type': raw['type'] is int
+              ? raw['type']
+              : int.tryParse(raw['type']?.toString() ?? '') ?? 0,
+          'timestamp': raw['timestamp'] is String
+              ? raw['timestamp']
+              : (raw['timestamp']?.toString() ??
+                    DateTime.now().toIso8601String()),
+          'isRead': raw['isRead'] == true || raw['is_read'] == 1,
+          'imageUrl': raw['imageUrl'] ?? raw['image_url'],
+          'fileName': raw['fileName'] ?? raw['file_name'],
+        };
+
+        return Message.fromJson(normalized);
+      }).toList();
     } catch (e) {
       debugPrint('Error fetching messages from Firebase: $e');
       return [];
@@ -168,6 +218,18 @@ class FirebaseService {
         .doc(userId)
         .snapshots()
         .map((doc) => doc.exists ? User.fromJson(doc.data()!) : null);
+  }
+
+  /// Fetch a single user document by id (one-shot).
+  Future<User?> fetchUserById(String userId) async {
+    try {
+      final doc = await _firestore.collection('users').doc(userId).get();
+      if (!doc.exists) return null;
+      return User.fromJson(doc.data()!);
+    } catch (e) {
+      debugPrint('Error fetching user from Firebase: $e');
+      return null;
+    }
   }
 
   // Check connection status
