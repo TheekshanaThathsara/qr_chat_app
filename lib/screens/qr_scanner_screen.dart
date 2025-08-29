@@ -13,6 +13,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
   MobileScannerController cameraController = MobileScannerController();
   bool _permissionGranted = false;
   bool _isInitialized = false;
+  bool _scanned = false;
 
   @override
   void initState() {
@@ -35,11 +36,27 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
   }
 
   void _onDetect(BarcodeCapture capture) {
+    if (_scanned) return; // ignore duplicates
     final List<Barcode> barcodes = capture.barcodes;
     if (barcodes.isNotEmpty) {
       final String code = barcodes.first.rawValue ?? '';
       if (code.isNotEmpty) {
-        Navigator.of(context).pop(code);
+        _scanned = true;
+        // stop camera to reduce duplicate detections
+        try {
+          cameraController.stop();
+        } catch (_) {}
+
+        // Safely try to pop passing the code. maybePop is safer than pop.
+        try {
+          Navigator.of(context).maybePop(code);
+        } catch (e) {
+          try {
+            Navigator.of(context, rootNavigator: true).maybePop(code);
+          } catch (e2) {
+            debugPrint('Warning: unable to pop scanner route with code: $e2');
+          }
+        }
       }
     }
   }
