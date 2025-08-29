@@ -6,12 +6,16 @@ class ChatRoomTile extends StatelessWidget {
   final ChatRoom chatRoom;
   final VoidCallback onTap;
   final VoidCallback? onDelete;
+  final VoidCallback? onClear;
+  final VoidCallback? onPinToggle;
 
   const ChatRoomTile({
     super.key,
     required this.chatRoom,
     required this.onTap,
-    this.onDelete,
+  this.onDelete,
+  this.onClear,
+  this.onPinToggle,
   });
 
   @override
@@ -84,7 +88,7 @@ class ChatRoomTile extends StatelessWidget {
             ),
           ],
         ),
-        trailing: Row(
+  trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Column(
@@ -115,12 +119,52 @@ class ChatRoomTile extends StatelessWidget {
                   ),
               ],
             ),
-            if (onDelete != null) ...[
+            if (onDelete != null || onClear != null || onPinToggle != null) ...[
               const SizedBox(width: 8),
-              IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red, size: 22),
-                tooltip: 'Delete Chat Room',
-                onPressed: onDelete,
+              PopupMenuButton<String>(
+                tooltip: 'More',
+                onSelected: (value) {
+                  switch (value) {
+                    case 'delete':
+                      if (onDelete != null) onDelete!();
+                      break;
+                    case 'clear':
+                      if (onClear != null) onClear!();
+                      break;
+                    case 'pin':
+                      if (onPinToggle != null) onPinToggle!();
+                      break;
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: ListTile(
+                      leading: Icon(Icons.delete, color: Colors.red),
+                      title: Text('Delete'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'clear',
+                    child: ListTile(
+                      leading: Icon(Icons.delete_sweep),
+                      title: Text('Clear Chat'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'pin',
+                    child: ListTile(
+                      leading: Icon(
+                        chatRoom.isPinned ? Icons.push_pin : Icons.push_pin_outlined,
+                      ),
+                      title: Text(chatRoom.isPinned ? 'Unpin' : 'Pin'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                ],
+                icon: const Icon(Icons.more_vert),
               ),
             ],
           ],

@@ -42,6 +42,37 @@ class ChatProvider with ChangeNotifier {
     }
   }
 
+  Future<void> clearChatMessages(String chatRoomId) async {
+    try {
+      await _databaseService.clearChatMessages(chatRoomId);
+      // update in-memory lastMessage
+      final idx = _chatRooms.indexWhere((r) => r.id == chatRoomId);
+      if (idx != -1) {
+        final updated = _chatRooms[idx].copyWith(lastMessage: null);
+        _chatRooms[idx] = updated;
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error clearing messages for $chatRoomId: $e');
+    }
+  }
+
+  Future<void> togglePinChatRoom(String chatRoomId, bool pin) async {
+    try {
+      await _databaseService.togglePinChatRoom(chatRoomId, pin);
+      final idx = _chatRooms.indexWhere((r) => r.id == chatRoomId);
+      if (idx != -1) {
+        final updated = _chatRooms[idx].copyWith();
+        // copyWith doesn't accept isPinned prior to our changes? It does now.
+        _chatRooms[idx] = updated.copyWith();
+        // Reload rooms to get latest ordering if pinning affects it
+        await loadChatRooms();
+      }
+    } catch (e) {
+      debugPrint('Error pinning chat room $chatRoomId: $e');
+    }
+  }
+
   Future<void> initializeChat(User currentUser) async {
     _isLoading = true;
     notifyListeners();

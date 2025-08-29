@@ -424,7 +424,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       builder: (context) => AlertDialog(
                         title: const Text('Delete Chat Room'),
                         content: const Text(
-                          'Are you sure you want to delete this chat room?',
+                          'Are you sure you want to permanently delete this chat room? This will remove all messages.',
                         ),
                         actions: [
                           TextButton(
@@ -447,6 +447,33 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         listen: false,
                       ).deleteChatRoom(chatRoom.id);
                     }
+                  },
+                  onClear: () async {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Clear Chat'),
+                        content: const Text('Clear all messages in this chat?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(false),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(true),
+                            child: const Text('Clear'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirm == true) {
+                      await Provider.of<ChatProvider>(context, listen: false)
+                          .clearChatMessages(chatRoom.id);
+                    }
+                  },
+                  onPinToggle: () async {
+                    await Provider.of<ChatProvider>(context, listen: false)
+                        .togglePinChatRoom(chatRoom.id, !chatRoom.isPinned);
                   },
                 );
               },

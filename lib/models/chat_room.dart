@@ -13,6 +13,7 @@ class ChatRoom {
   final DateTime createdAt;
   final String createdBy;
   final bool isPrivate;
+  final bool isPinned;
   final String? qrCode;
 
   ChatRoom({
@@ -23,7 +24,8 @@ class ChatRoom {
     this.lastMessage,
     required this.createdAt,
     required this.createdBy,
-    this.isPrivate = false,
+  this.isPrivate = false,
+  this.isPinned = false,
     this.qrCode,
   });
 
@@ -113,7 +115,8 @@ class ChatRoom {
 
     final createdBy = json['createdBy'] ?? json['created_by'] ?? '';
     final isPrivate = json['isPrivate'] ?? json['is_private'] ?? false;
-    final qrCode = json['qrCode'] ?? json['qr_code'];
+  final qrCode = json['qrCode'] ?? json['qr_code'];
+  final isPinned = json['isPinned'] ?? json['is_pinned'] ?? false;
 
     return ChatRoom(
       id: id,
@@ -124,7 +127,8 @@ class ChatRoom {
       createdAt: createdAt,
       createdBy: createdBy?.toString() ?? '',
       isPrivate: isPrivate is bool ? isPrivate : (isPrivate == 1),
-      qrCode: qrCode?.toString(),
+  qrCode: qrCode?.toString(),
+  isPinned: isPinned is bool ? isPinned : (isPinned == 1),
     );
   }
 
@@ -138,7 +142,8 @@ class ChatRoom {
       'createdAt': createdAt.toIso8601String(),
       'createdBy': createdBy,
       'isPrivate': isPrivate,
-      'qrCode': qrCode,
+  'isPinned': isPinned,
+  'qrCode': qrCode,
     };
   }
 
@@ -151,6 +156,7 @@ class ChatRoom {
     DateTime? createdAt,
     String? createdBy,
     bool? isPrivate,
+  bool? isPinned,
     String? qrCode,
   }) {
     return ChatRoom(
@@ -162,6 +168,7 @@ class ChatRoom {
       createdAt: createdAt ?? this.createdAt,
       createdBy: createdBy ?? this.createdBy,
       isPrivate: isPrivate ?? this.isPrivate,
+  isPinned: isPinned ?? this.isPinned,
       qrCode: qrCode ?? this.qrCode,
     );
   }
