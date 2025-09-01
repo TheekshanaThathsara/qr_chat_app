@@ -24,6 +24,9 @@ class ChatProvider with ChangeNotifier {
   StreamSubscription<List<ChatRoom>>? _roomsSubscription;
   final Map<String, StreamSubscription<List<Message>>>
   _roomMessageSubscriptions = {};
+  StreamSubscription<List<ChatRoom>>? _roomsSubscription;
+  final Map<String, StreamSubscription<List<Message>>>
+  _roomMessageSubscriptions = {};
   bool _isOnline = false;
 
   List<ChatRoom> get chatRooms => _chatRooms;
@@ -44,6 +47,37 @@ class ChatProvider with ChangeNotifier {
     }
   }
 
+  Future<void> clearChatMessages(String chatRoomId) async {
+    try {
+      await _databaseService.clearChatMessages(chatRoomId);
+      // update in-memory lastMessage
+      final idx = _chatRooms.indexWhere((r) => r.id == chatRoomId);
+      if (idx != -1) {
+        final updated = _chatRooms[idx].copyWith(lastMessage: null);
+        _chatRooms[idx] = updated;
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error clearing messages for $chatRoomId: $e');
+    }
+  }
+
+  Future<void> togglePinChatRoom(String chatRoomId, bool pin) async {
+    try {
+      await _databaseService.togglePinChatRoom(chatRoomId, pin);
+      final idx = _chatRooms.indexWhere((r) => r.id == chatRoomId);
+      if (idx != -1) {
+        final updated = _chatRooms[idx].copyWith();
+        // copyWith doesn't accept isPinned prior to our changes? It does now.
+        _chatRooms[idx] = updated.copyWith();
+        // Reload rooms to get latest ordering if pinning affects it
+        await loadChatRooms();
+      }
+    } catch (e) {
+      debugPrint('Error pinning chat room $chatRoomId: $e');
+    }
+  }
+
   Future<void> initializeChat(User currentUser) async {
     _isLoading = true;
     _currentUser = currentUser; // Store the current user
@@ -56,6 +90,7 @@ class ChatProvider with ChangeNotifier {
       await _syncUnsyncedMessages();
 
       // Listen to Firebase connection status
+      _firebaseService.connectionStatus.listen((isOnline) async {
       _firebaseService.connectionStatus.listen((isOnline) async {
         _isOnline = isOnline;
         if (isOnline) {

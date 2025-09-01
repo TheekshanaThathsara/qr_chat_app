@@ -1,6 +1,9 @@
 import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart' show Timestamp;
+import 'dart:convert';
+
+import 'package:cloud_firestore/cloud_firestore.dart' show Timestamp;
 import 'package:instant_chat_app/models/user.dart';
 import 'package:instant_chat_app/models/message.dart';
 
@@ -13,6 +16,7 @@ class ChatRoom {
   final DateTime createdAt;
   final String createdBy;
   final bool isPrivate;
+  final bool isPinned;
   final String? qrCode;
 
   ChatRoom({
@@ -23,7 +27,8 @@ class ChatRoom {
     this.lastMessage,
     required this.createdAt,
     required this.createdBy,
-    this.isPrivate = false,
+  this.isPrivate = false,
+  this.isPinned = false,
     this.qrCode,
   });
 
@@ -138,7 +143,8 @@ class ChatRoom {
       'createdAt': createdAt.toIso8601String(),
       'createdBy': createdBy,
       'isPrivate': isPrivate,
-      'qrCode': qrCode,
+  'isPinned': isPinned,
+  'qrCode': qrCode,
     };
   }
 
@@ -151,6 +157,7 @@ class ChatRoom {
     DateTime? createdAt,
     String? createdBy,
     bool? isPrivate,
+  bool? isPinned,
     String? qrCode,
   }) {
     return ChatRoom(
@@ -162,11 +169,13 @@ class ChatRoom {
       createdAt: createdAt ?? this.createdAt,
       createdBy: createdBy ?? this.createdBy,
       isPrivate: isPrivate ?? this.isPrivate,
+  isPinned: isPinned ?? this.isPinned,
       qrCode: qrCode ?? this.qrCode,
     );
   }
 
   int get participantCount => participants.length;
+
 
   bool get hasUnreadMessages => lastMessage != null && !lastMessage!.isRead;
 }

@@ -8,12 +8,16 @@ class ChatRoomTile extends StatelessWidget {
   final ChatRoom chatRoom;
   final VoidCallback onTap;
   final VoidCallback? onDelete;
+  final VoidCallback? onClear;
+  final VoidCallback? onPinToggle;
 
   const ChatRoomTile({
     super.key,
     required this.chatRoom,
     required this.onTap,
-    this.onDelete,
+  this.onDelete,
+  this.onClear,
+  this.onPinToggle,
   });
 
   @override

@@ -1,6 +1,5 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
-import 'dart:convert';
 import 'package:instant_chat_app/models/chat_room.dart';
 import 'package:instant_chat_app/models/message.dart';
 import 'package:instant_chat_app/models/user.dart';
@@ -20,7 +19,7 @@ class DatabaseService {
 
   static Database? _database;
   static const String _databaseName = 'instant_chat.db';
-  static const int _databaseVersion = 3;
+  static const int _databaseVersion = 4;
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -50,6 +49,7 @@ class DatabaseService {
         created_at TEXT NOT NULL,
         created_by TEXT NOT NULL,
         is_private INTEGER NOT NULL DEFAULT 0,
+        is_pinned INTEGER NOT NULL DEFAULT 0,
         qr_code TEXT
       )
     ''');
@@ -99,10 +99,13 @@ class DatabaseService {
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
-      // Add synced column to messages table
-      await db.execute(
-        'ALTER TABLE messages ADD COLUMN synced INTEGER NOT NULL DEFAULT 0',
-      );
+      // Add synced column to messages table if it doesn't already exist
+      final exists = await _columnExists(db, 'messages', 'synced');
+      if (!exists) {
+        await db.execute(
+          'ALTER TABLE messages ADD COLUMN synced INTEGER NOT NULL DEFAULT 0',
+        );
+      }
     }
     // Version 3: add email column to users table if missing
     if (oldVersion < 3) {
@@ -112,6 +115,35 @@ class DatabaseService {
         // If the column already exists or alter failed, log and continue
         // (Some devices may already have this column)
       }
+    }
+    // Version 4: add is_pinned column to chat_rooms if missing
+    if (oldVersion < 4) {
+      final exists = await _columnExists(db, 'chat_rooms', 'is_pinned');
+      if (!exists) {
+        try {
+          await db.execute(
+            'ALTER TABLE chat_rooms ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0',
+          );
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
+  }
+
+  /// Returns true if [columnName] exists on [tableName]. Uses PRAGMA table_info.
+  Future<bool> _columnExists(Database db, String tableName, String columnName) async {
+    try {
+      final List<Map<String, Object?>> info =
+          await db.rawQuery('PRAGMA table_info($tableName)');
+      for (final row in info) {
+        final name = row['name']?.toString();
+        if (name == columnName) return true;
+      }
+      return false;
+    } catch (e) {
+      // If anything goes wrong assume column doesn't exist so migration will try.
+      return false;
     }
   }
 
@@ -126,15 +158,15 @@ class DatabaseService {
       'id': chatRoom.id,
       'name': chatRoom.name,
       'description': chatRoom.description,
-      'participants': jsonEncode(
-        chatRoom.participants.map((u) => u.toJson()).toList(),
-      ),
-      'last_message': chatRoom.lastMessage != null
-          ? jsonEncode(chatRoom.lastMessage!.toJson())
-          : null,
+      'participants': chatRoom.participants
+          .map((u) => u.toJson())
+          .toList()
+          .toString(),
+      'last_message': chatRoom.lastMessage?.toJson().toString(),
       'created_at': chatRoom.createdAt.toIso8601String(),
       'created_by': chatRoom.createdBy,
       'is_private': chatRoom.isPrivate ? 1 : 0,
+  'is_pinned': chatRoom.isPinned ? 1 : 0,
       'qr_code': chatRoom.qrCode,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
@@ -147,34 +179,6 @@ class DatabaseService {
     );
 
     return List.generate(maps.length, (i) {
-      // Parse participants JSON if available
-      List<dynamic> participantsJson = [];
-      try {
-        if (maps[i]['participants'] != null) {
-          participantsJson = jsonDecode(maps[i]['participants']);
-        }
-      } catch (e) {
-        // Fallback: leave participants empty
-        participantsJson = [];
-      }
-
-      // Parse last_message which may be stored as JSON string or as null
-      dynamic lastMessageField = maps[i]['last_message'];
-      dynamic lastMessageJson;
-      try {
-        if (lastMessageField == null) {
-          lastMessageJson = null;
-        } else if (lastMessageField is String) {
-          lastMessageJson = jsonDecode(lastMessageField);
-        } else if (lastMessageField is Map) {
-          lastMessageJson = lastMessageField;
-        } else {
-          lastMessageJson = null;
-        }
-      } catch (e) {
-        lastMessageJson = null;
-      }
-
       return ChatRoom.fromJson({
         'id': maps[i]['id'],
         'name': maps[i]['name'],
@@ -183,8 +187,9 @@ class DatabaseService {
         'lastMessage': lastMessageJson,
         'createdAt': maps[i]['created_at'],
         'createdBy': maps[i]['created_by'],
-        'isPrivate': maps[i]['is_private'] == 1,
-        'qrCode': maps[i]['qr_code'],
+  'isPrivate': maps[i]['is_private'] == 1,
+  'is_pinned': maps[i]['is_pinned'] == 1,
+  'qrCode': maps[i]['qr_code'],
       });
     });
   }
@@ -274,41 +279,17 @@ class DatabaseService {
     );
 
     if (maps.isNotEmpty) {
-      List<dynamic> participantsJson = [];
-      try {
-        if (maps[0]['participants'] != null) {
-          participantsJson = jsonDecode(maps[0]['participants']);
-        }
-      } catch (e) {
-        participantsJson = [];
-      }
-
-      dynamic lastMessageField = maps[0]['last_message'];
-      dynamic lastMessageJson;
-      try {
-        if (lastMessageField == null) {
-          lastMessageJson = null;
-        } else if (lastMessageField is String) {
-          lastMessageJson = jsonDecode(lastMessageField);
-        } else if (lastMessageField is Map) {
-          lastMessageJson = lastMessageField;
-        } else {
-          lastMessageJson = null;
-        }
-      } catch (e) {
-        lastMessageJson = null;
-      }
-
       return ChatRoom.fromJson({
         'id': maps[0]['id'],
         'name': maps[0]['name'],
         'description': maps[0]['description'],
-        'participants': participantsJson,
-        'lastMessage': lastMessageJson,
+        'participants': [], // Will be populated separately
+        'lastMessage': maps[0]['last_message'],
         'createdAt': maps[0]['created_at'],
         'createdBy': maps[0]['created_by'],
-        'isPrivate': maps[0]['is_private'] == 1,
-        'qrCode': maps[0]['qr_code'],
+  'isPrivate': maps[0]['is_private'] == 1,
+  'is_pinned': maps[0]['is_pinned'] == 1,
+  'qrCode': maps[0]['qr_code'],
       });
     }
     return null;
@@ -323,41 +304,17 @@ class DatabaseService {
     );
 
     if (maps.isNotEmpty) {
-      List<dynamic> participantsJson = [];
-      try {
-        if (maps[0]['participants'] != null) {
-          participantsJson = jsonDecode(maps[0]['participants']);
-        }
-      } catch (e) {
-        participantsJson = [];
-      }
-
-      dynamic lastMessageField = maps[0]['last_message'];
-      dynamic lastMessageJson;
-      try {
-        if (lastMessageField == null) {
-          lastMessageJson = null;
-        } else if (lastMessageField is String) {
-          lastMessageJson = jsonDecode(lastMessageField);
-        } else if (lastMessageField is Map) {
-          lastMessageJson = lastMessageField;
-        } else {
-          lastMessageJson = null;
-        }
-      } catch (e) {
-        lastMessageJson = null;
-      }
-
       return ChatRoom.fromJson({
         'id': maps[0]['id'],
         'name': maps[0]['name'],
         'description': maps[0]['description'],
-        'participants': participantsJson,
-        'lastMessage': lastMessageJson,
+        'participants': [], // Will be populated separately
+        'lastMessage': maps[0]['last_message'],
         'createdAt': maps[0]['created_at'],
         'createdBy': maps[0]['created_by'],
-        'isPrivate': maps[0]['is_private'] == 1,
-        'qrCode': maps[0]['qr_code'],
+  'isPrivate': maps[0]['is_private'] == 1,
+  'is_pinned': maps[0]['is_pinned'] == 1,
+  'qrCode': maps[0]['qr_code'],
       });
     }
     return null;
@@ -555,6 +512,17 @@ class DatabaseService {
     _database = null;
   }
 
+  Future<void> clearChatMessages(String chatRoomId) async {
+    final db = await database;
+    await db.delete('messages', where: 'chat_room_id = ?', whereArgs: [chatRoomId]);
+    await db.update('chat_rooms', {'last_message': null}, where: 'id = ?', whereArgs: [chatRoomId]);
+  }
+
+  Future<void> togglePinChatRoom(String chatRoomId, bool pin) async {
+    final db = await database;
+    await db.update('chat_rooms', {'is_pinned': pin ? 1 : 0}, where: 'id = ?', whereArgs: [chatRoomId]);
+  }
+
   // Contact methods
   Future<void> addContact(Contact contact) async {
     final db = await database;
@@ -583,30 +551,6 @@ class DatabaseService {
 
   Future<bool> isContactExists(String userId) async {
     final db = await database;
-    try {
-      final List<Map<String, dynamic>> result = await db.rawQuery(
-        'SELECT COUNT(*) as c FROM contacts WHERE userId = ?',
-        [userId],
-      );
-      int count = 0;
-      if (result.isNotEmpty) {
-        final dynamic v = result.first['c'];
-        if (v is int) {
-          count = v;
-        } else if (v is String) {
-          count = int.tryParse(v) ?? 0;
-        } else if (v is num) {
-          count = v.toInt();
-        }
-      }
-      return count > 0;
-    } catch (e) {
-      // Fallback: delegate to ContactService which currently returns a bool
-      try {
-        return await ContactService.isContactExists(db, userId);
-      } catch (_) {
-        return false;
-      }
-    }
+    return await ContactService.isContactExists(db, userId);
   }
 }
