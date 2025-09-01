@@ -186,13 +186,43 @@ class ChatProvider with ChangeNotifier {
           .listenToMessages(roomId)
           .listen(
             (messages) async {
+              bool hasNewMessages = false;
+              Message? latestMessage;
+
               for (var m in messages) {
                 try {
                   await _databaseService.saveMessage(m, synced: true);
+                  hasNewMessages = true;
+                  if (latestMessage == null ||
+                      m.timestamp.isAfter(latestMessage.timestamp)) {
+                    latestMessage = m;
+                  }
                 } catch (e) {
                   debugPrint(
                     'Error saving incoming message for room $roomId: $e',
                   );
+                }
+              }
+
+              // Update chat room's lastMessage if we received new messages
+              if (hasNewMessages && latestMessage != null) {
+                final roomIndex = _chatRooms.indexWhere(
+                  (room) => room.id == roomId,
+                );
+                if (roomIndex != -1) {
+                  final updatedRoom = _chatRooms[roomIndex].copyWith(
+                    lastMessage: latestMessage,
+                  );
+                  _chatRooms[roomIndex] = updatedRoom;
+                  await _databaseService.saveChatRoom(updatedRoom);
+
+                  // If this is the current chat room, update it too
+                  if (_currentChatRoom?.id == roomId) {
+                    _currentChatRoom = updatedRoom;
+                  }
+
+                  // Notify listeners to update the chat list UI
+                  notifyListeners();
                 }
               }
 
@@ -524,9 +554,7 @@ class ChatProvider with ChangeNotifier {
       );
       final String roomName =
           displayName ??
-          (otherUser.username.isNotEmpty
-              ? 'Chat with ${otherUser.username}'
-              : 'Private Chat');
+          (otherUser.username.isNotEmpty ? otherUser.username : 'Private Chat');
 
       final ChatRoom newRoom = ChatRoom(
         id: deterministicRoomId,

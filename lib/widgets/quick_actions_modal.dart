@@ -795,7 +795,7 @@ class _QRScannerModalState extends State<QRScannerModal> {
 
       // Use the new deterministic room creation method
       final roomName = otherUser.username.isNotEmpty
-          ? 'Chat with ${otherUser.username}'
+          ? otherUser.username
           : 'Private Chat';
 
       final chatRoom = await chatProvider.getOrCreatePrivateRoomWith(

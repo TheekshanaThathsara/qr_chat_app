@@ -30,7 +30,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _initializeChat();
+    // Use post frame callback to avoid calling setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeChat();
+    });
   }
 
   @override
@@ -222,7 +225,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             return;
           }
 
-          final roomName = 'Chat with ${effectiveUser.username}';
+          final roomName = effectiveUser.username.isNotEmpty
+              ? effectiveUser.username
+              : 'Private Chat';
           final chatRoom = await chatProvider.createChatRoom(
             name: roomName,
             creator: userProvider.currentUser!,
@@ -410,9 +415,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
           return RefreshIndicator(
             onRefresh: () => chatProvider.loadChatRooms(),
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
+            child: ListView.separated(
+              padding: EdgeInsets.zero,
               itemCount: chatProvider.chatRooms.length,
+              separatorBuilder: (context, index) => Divider(
+                height: 1,
+                thickness: 0.5,
+                indent: 72, // Align with content after avatar
+                endIndent: 16,
+                color: Theme.of(
+                  context,
+                ).colorScheme.outline.withValues(alpha: 0.2),
+              ),
               itemBuilder: (context, index) {
                 final chatRoom = chatProvider.chatRooms[index];
                 return ChatRoomTile(
