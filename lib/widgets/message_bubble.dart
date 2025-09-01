@@ -17,133 +17,83 @@ class MessageBubble extends StatelessWidget {
         final isMe = message.senderId == userProvider.currentUser?.id;
 
         return Container(
-          margin: const EdgeInsets.symmetric(vertical: 4),
+          margin: const EdgeInsets.symmetric(vertical: 2, horizontal: 8),
           child: Row(
             mainAxisAlignment: isMe
                 ? MainAxisAlignment.end
                 : MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              if (!isMe) ...[
-                CircleAvatar(
-                  radius: 16,
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  child: Text(
-                    message.senderName.isNotEmpty
-                        ? message.senderName[0].toUpperCase()
-                        : '?',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-              ],
               Flexible(
                 child: Column(
                   crossAxisAlignment: isMe
                       ? CrossAxisAlignment.end
                       : CrossAxisAlignment.start,
                   children: [
-                    if (!isMe)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 8, bottom: 4),
-                        child: Text(
-                          message.senderName,
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurface.withValues(alpha: 0.7),
-                              ),
-                        ),
+                    Container(
+                      constraints: BoxConstraints(
+                        maxWidth: MediaQuery.of(context).size.width * 0.75,
                       ),
-                    GestureDetector(
-                      onLongPress: () => _showMessageOptions(context, isMe),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isMe
-                              ? Theme.of(context).colorScheme.primary
-                              : Theme.of(
-                                  context,
-                                ).colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.only(
-                            topLeft: const Radius.circular(16),
-                            topRight: const Radius.circular(16),
-                            bottomLeft: Radius.circular(isMe ? 16 : 4),
-                            bottomRight: Radius.circular(isMe ? 4 : 16),
+                      child: GestureDetector(
+                        onLongPress: () => _showMessageOptions(context, isMe),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
                           ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildMessageContent(context, isMe),
-                            const SizedBox(height: 4),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  app_date_utils.DateUtils.formatMessageTime(
-                                    message.timestamp,
-                                  ),
-                                  style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(
-                                        color: isMe
-                                            ? Colors.white.withValues(
-                                                alpha: 0.7,
-                                              )
-                                            : Theme.of(context)
-                                                  .colorScheme
-                                                  .onSurface
-                                                  .withValues(alpha: 0.7),
-                                        fontSize: 11,
-                                      ),
-                                ),
-                                if (isMe) ...[
-                                  const SizedBox(width: 4),
-                                  Icon(
-                                    message.isRead
-                                        ? Icons.done_all
-                                        : Icons.done,
-                                    size: 14,
-                                    color: message.isRead
-                                        ? Colors.blue[300]
-                                        : Colors.white.withValues(alpha: 0.7),
-                                  ),
-                                ],
-                              ],
+                          decoration: BoxDecoration(
+                            color: isMe
+                                ? Theme.of(context).colorScheme.primary
+                                : Colors.grey[300],
+                            borderRadius: BorderRadius.only(
+                              topLeft: const Radius.circular(18),
+                              topRight: const Radius.circular(18),
+                              bottomLeft: Radius.circular(isMe ? 18 : 4),
+                              bottomRight: Radius.circular(isMe ? 4 : 18),
                             ),
-                          ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildMessageContent(context, isMe),
+                              const SizedBox(height: 2),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    app_date_utils.DateUtils.formatMessageTime(
+                                      message.timestamp,
+                                    ),
+                                    style: TextStyle(
+                                      color: isMe
+                                          ? Colors.white.withValues(alpha: 0.7)
+                                          : Colors.grey[600],
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                  if (isMe) ...[
+                                    const SizedBox(width: 4),
+                                    Icon(
+                                      message.isRead
+                                          ? Icons.done_all
+                                          : Icons.done,
+                                      size: 16,
+                                      color: message.isRead
+                                          ? Colors.blue[200]
+                                          : Colors.white.withValues(alpha: 0.7),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-              if (isMe) ...[
-                const SizedBox(width: 8),
-                CircleAvatar(
-                  radius: 16,
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  child: Text(
-                    userProvider.currentUser?.username.isNotEmpty == true
-                        ? userProvider.currentUser!.username[0].toUpperCase()
-                        : '?',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
             ],
           ),
         );
@@ -157,9 +107,7 @@ class MessageBubble extends StatelessWidget {
         return Text(
           message.content,
           style: TextStyle(
-            color: isMe
-                ? Colors.white
-                : Theme.of(context).colorScheme.onSurface,
+            color: isMe ? Colors.white : Colors.black87,
             fontSize: 16,
           ),
         );
@@ -215,11 +163,7 @@ class MessageBubble extends StatelessWidget {
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
                   message.content,
-                  style: TextStyle(
-                    color: isMe
-                        ? Colors.white
-                        : Theme.of(context).colorScheme.onSurface,
-                  ),
+                  style: TextStyle(color: isMe ? Colors.white : Colors.black87),
                 ),
               ),
           ],
@@ -242,9 +186,7 @@ class MessageBubble extends StatelessWidget {
                     Icons.attach_file,
                     color: isMe
                         ? Colors.white.withValues(alpha: 0.8)
-                        : Theme.of(
-                            context,
-                          ).colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
+                        : Colors.grey[700],
                   ),
                   const SizedBox(width: 8),
                   Flexible(
@@ -253,8 +195,7 @@ class MessageBubble extends StatelessWidget {
                       style: TextStyle(
                         color: isMe
                             ? Colors.white.withValues(alpha: 0.9)
-                            : Theme.of(context).colorScheme.onSurfaceVariant
-                                  .withValues(alpha: 0.9),
+                            : Colors.black87,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -268,9 +209,7 @@ class MessageBubble extends StatelessWidget {
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: isMe
                       ? Colors.white.withValues(alpha: 0.8)
-                      : Theme.of(
-                          context,
-                        ).colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
+                      : Colors.grey[600],
                 ),
               ),
           ],

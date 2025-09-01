@@ -33,6 +33,23 @@ class FirebaseService {
     }
   }
 
+  Future<ChatRoom?> fetchChatRoomById(String roomId) async {
+    try {
+      final DocumentSnapshot doc = await _firestore
+          .collection('chat_rooms')
+          .doc(roomId)
+          .get();
+      if (doc.exists && doc.data() != null) {
+        final data = doc.data() as Map<String, dynamic>;
+        return ChatRoom.fromJson(data);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error fetching chat room by ID: $e');
+      return null;
+    }
+  }
+
   Stream<List<ChatRoom>> listenToChatRooms() {
     return _firestore
         .collection('chat_rooms')

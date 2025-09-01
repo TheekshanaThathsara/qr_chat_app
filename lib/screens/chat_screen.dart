@@ -23,8 +23,6 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final ImagePicker _imagePicker = ImagePicker();
-  int _characterCount = 0;
-  bool _isTyping = false;
 
   @override
   void initState() {
@@ -36,19 +34,8 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _updateCharacterCount() {
-    final newLength = _messageController.text.length;
-    final newIsTyping = _messageController.text.trim().isNotEmpty;
-
-    setState(() {
-      _characterCount = newLength;
-      _isTyping = newIsTyping;
-    });
-
-    // Show typing indicator briefly when user stops typing
-    if (newIsTyping && newLength > 0) {
-      // You could implement a typing indicator here for other users
-      // For now, we'll just update the local state
-    }
+    // This method can be simplified or removed if not needed
+    // We're handling text changes directly in the WhatsApp-style input
   }
 
   void _initializeChat() {
@@ -66,281 +53,288 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(widget.chatRoom.name, style: const TextStyle(fontSize: 18)),
-            Text(
-              '${widget.chatRoom.participantCount} member${widget.chatRoom.participantCount != 1 ? 's' : ''}',
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.normal,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.qr_code),
-            onPressed: () => _showQrCode(),
-            tooltip: 'Show QR Code',
-          ),
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              switch (value) {
-                case 'info':
-                  _showRoomInfo();
-                  break;
-                case 'leave':
-                  _showLeaveRoomDialog();
-                  break;
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'info',
-                child: ListTile(
-                  leading: Icon(Icons.info),
-                  title: Text('Room Info'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'leave',
-                child: ListTile(
-                  leading: Icon(Icons.exit_to_app),
-                  title: Text('Leave Room'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Messages list
-          Expanded(
-            child: Consumer<ChatProvider>(
-              builder: (context, chatProvider, child) {
-                if (chatProvider.isLoading) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+    return Consumer<UserProvider>(
+      builder: (context, userProvider, child) {
+        // Find the other participant (not the current user) for private chats
+        String chatTitle = widget.chatRoom.name;
+        if (widget.chatRoom.isPrivate && userProvider.currentUser != null) {
+          final otherParticipant = widget.chatRoom.participants.firstWhere(
+            (participant) => participant.id != userProvider.currentUser!.id,
+            orElse: () => widget.chatRoom.participants.first,
+          );
+          chatTitle = otherParticipant.username.isNotEmpty
+              ? otherParticipant.username
+              : 'Private Chat';
+        }
 
-                if (chatProvider.currentMessages.isEmpty) {
-                  return Container(
-                    padding: const EdgeInsets.all(16),
-                    child: const Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.chat_bubble_outline,
-                            size: 80,
-                            color: Colors.grey,
-                          ),
-                          SizedBox(height: 16),
-                          Text(
-                            'No messages yet',
-                            style: TextStyle(fontSize: 16, color: Colors.grey),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            'Send the first message to start the conversation',
-                            style: TextStyle(fontSize: 14, color: Colors.grey),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }
-
-                // Scroll to bottom when new messages arrive
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (_scrollController.hasClients) {
-                    _scrollController.animateTo(
-                      _scrollController.position.maxScrollExtent,
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeOut,
-                    );
-                  }
-                });
-
-                return ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.all(16),
-                  itemCount: chatProvider.currentMessages.length,
-                  itemBuilder: (context, index) {
-                    final message = chatProvider.currentMessages[index];
-                    return MessageBubble(message: message);
-                  },
-                );
-              },
-            ),
-          ),
-
-          // Message input
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              border: Border(
-                top: BorderSide(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.outline.withValues(alpha: 0.2),
-                ),
-              ),
-            ),
-            child: Row(
+        return Scaffold(
+          appBar: AppBar(
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Attachment button
-                IconButton(
-                  onPressed: _showAttachmentOptions,
-                  icon: const Icon(Icons.attach_file),
-                  style: IconButton.styleFrom(
-                    foregroundColor: Theme.of(context).colorScheme.primary,
+                Text(chatTitle, style: const TextStyle(fontSize: 18)),
+                Text(
+                  '${widget.chatRoom.participantCount} member${widget.chatRoom.participantCount != 1 ? 's' : ''}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.normal,
                   ),
-                ),
-                const SizedBox(width: 8),
-                // Message input field
-                Expanded(
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: _isTyping
-                          ? [
-                              BoxShadow(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.primary.withValues(alpha: 0.2),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ]
-                          : [],
-                    ),
-                    child: TextField(
-                      controller: _messageController,
-                      decoration: InputDecoration(
-                        hintText: 'Type a message...',
-                        border: const OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(24)),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: const BorderRadius.all(
-                            Radius.circular(24),
-                          ),
-                          borderSide: BorderSide(
-                            color: Theme.of(context).colorScheme.primary,
-                            width: 2,
-                          ),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        suffixText: _characterCount > 0
-                            ? '$_characterCount/1000'
-                            : null,
-                        suffixStyle: TextStyle(
-                          color: _characterCount > 800
-                              ? (_characterCount > 1000
-                                    ? Colors.red
-                                    : Colors.orange)
-                              : Colors.grey,
-                          fontSize: 12,
-                        ),
-                      ),
-                      maxLines: null,
-                      maxLength: 1000,
-                      buildCounter:
-                          (
-                            context, {
-                            required currentLength,
-                            required isFocused,
-                            maxLength,
-                          }) {
-                            // Hide the default counter since we're showing our own
-                            return null;
-                          },
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _sendMessage(),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Send button
-                Consumer<ChatProvider>(
-                  builder: (context, chatProvider, child) {
-                    final canSend = _isTyping && !chatProvider.isLoading;
-
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      child: IconButton(
-                        onPressed: canSend ? _sendMessage : null,
-                        icon: chatProvider.isLoading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : Icon(
-                                Icons.send,
-                                color: canSend
-                                    ? Colors.white
-                                    : Colors.grey.shade400,
-                              ),
-                        style: IconButton.styleFrom(
-                          backgroundColor: canSend
-                              ? Theme.of(context).colorScheme.primary
-                              : Colors.grey.shade200,
-                          shape: const CircleBorder(),
-                          padding: const EdgeInsets.all(12),
-                        ),
-                      ),
-                    );
-                  },
                 ),
               ],
             ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.qr_code),
+                onPressed: () => _showQrCode(),
+                tooltip: 'Show QR Code',
+              ),
+              PopupMenuButton<String>(
+                onSelected: (value) {
+                  switch (value) {
+                    case 'info':
+                      _showRoomInfo();
+                      break;
+                    case 'leave':
+                      _showLeaveRoomDialog();
+                      break;
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'info',
+                    child: ListTile(
+                      leading: Icon(Icons.info),
+                      title: Text('Room Info'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'leave',
+                    child: ListTile(
+                      leading: Icon(Icons.exit_to_app),
+                      title: Text('Leave Room'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          // Connection status indicator (simplified since no socket)
-          Consumer<ChatProvider>(
-            builder: (context, chatProvider, child) {
-              // Show loading indicator when sending messages
-              if (chatProvider.isLoading) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  color: Colors.blue.shade100,
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+          body: Column(
+            children: [
+              // Messages list
+              Expanded(
+                child: Consumer<ChatProvider>(
+                  builder: (context, chatProvider, child) {
+                    if (chatProvider.isLoading) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    if (chatProvider.currentMessages.isEmpty) {
+                      return Container(
+                        padding: const EdgeInsets.all(16),
+                        child: const Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.chat_bubble_outline,
+                                size: 80,
+                                color: Colors.grey,
+                              ),
+                              SizedBox(height: 16),
+                              Text(
+                                'No messages yet',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'Send the first message to start the conversation',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+
+                    // Scroll to bottom when new messages arrive
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (_scrollController.hasClients) {
+                        _scrollController.animateTo(
+                          _scrollController.position.maxScrollExtent,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeOut,
+                        );
+                      }
+                    });
+
+                    return ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.all(16),
+                      itemCount: chatProvider.currentMessages.length,
+                      itemBuilder: (context, index) {
+                        final message = chatProvider.currentMessages[index];
+                        return MessageBubble(message: message);
+                      },
+                    );
+                  },
+                ),
+              ),
+
+              // Message input - WhatsApp style
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                color: Theme.of(context).colorScheme.surface,
+                child: SafeArea(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                      Expanded(
+                        child: Container(
+                          constraints: const BoxConstraints(minHeight: 48),
+                          decoration: BoxDecoration(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Expanded(
+                                child: Container(
+                                  constraints: const BoxConstraints(
+                                    minHeight: 20,
+                                    maxHeight: 120,
+                                  ),
+                                  child: TextField(
+                                    controller: _messageController,
+                                    decoration: InputDecoration(
+                                      hintText: 'Message',
+                                      border: InputBorder.none,
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 12,
+                                          ),
+                                      hintStyle: TextStyle(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    maxLines: null,
+                                    minLines: 1,
+                                    style: const TextStyle(fontSize: 16),
+                                    textCapitalization:
+                                        TextCapitalization.sentences,
+                                    onChanged: (text) {
+                                      setState(() {
+                                        // Trigger rebuild for dynamic send button
+                                      });
+                                    },
+                                    onSubmitted: (_) => _sendMessage(),
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                icon: Icon(
+                                  Icons.attach_file,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                  size: 24,
+                                ),
+                                onPressed: _showAttachmentOptions,
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                      SizedBox(width: 8),
-                      Text(
-                        'Sending message...',
-                        style: TextStyle(color: Colors.blue, fontSize: 12),
+                      const SizedBox(width: 8),
+                      Consumer<ChatProvider>(
+                        builder: (context, chatProvider, child) {
+                          final hasText = _messageController.text
+                              .trim()
+                              .isNotEmpty;
+                          final canSend = hasText && !chatProvider.isLoading;
+
+                          return AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            child: GestureDetector(
+                              onTap: canSend ? _sendMessage : null,
+                              child: Container(
+                                width: 48,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: chatProvider.isLoading
+                                    ? const Center(
+                                        child: SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      )
+                                    : const Icon(
+                                        Icons.send,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),
-                );
-              }
-              return const SizedBox.shrink();
-            },
+                ),
+              ),
+              Consumer<ChatProvider>(
+                builder: (context, chatProvider, child) {
+                  // Show loading indicator when sending messages
+                  if (chatProvider.isLoading) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      color: Colors.blue.shade100,
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'Sending message...',
+                            style: TextStyle(color: Colors.blue, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -370,12 +364,6 @@ class _ChatScreenState extends State<ChatScreen> {
         // Clear message immediately for better UX
         final messageContent = message;
         _messageController.clear();
-
-        // Reset typing state
-        setState(() {
-          _isTyping = false;
-          _characterCount = 0;
-        });
 
         // Send message with proper details
         await chatProvider.sendMessage(

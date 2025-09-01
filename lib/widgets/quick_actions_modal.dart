@@ -793,81 +793,24 @@ class _QRScannerModalState extends State<QRScannerModal> {
         return;
       }
 
-      // Try to find an existing private room between currentUser and otherUser
-      final existing = await _databaseService.getPrivateRoomBetweenUsers(
-        currentUser.id,
-        otherUser.id,
-      );
-
-      if (existing != null) {
-        // Ensure chat provider has the room loaded
-        await chatProvider.loadChatRooms();
-        if (!mounted) return;
-        // If this is a private room between two users, persist a friend-friendly name
-        ChatRoom displayRoom = existing;
-        try {
-          if (existing.isPrivate && existing.participants.length == 2) {
-            final other = existing.participants.firstWhere(
-              (p) => p.id != currentUser.id,
-              orElse: () => existing.participants.first,
-            );
-            final desiredName = other.username.isNotEmpty
-                ? 'Chat with ${other.username}'
-                : existing.name;
-            if (existing.name != desiredName) {
-              // Persist updated name and reload chat rooms so UI reflects it
-              displayRoom = existing.copyWith(name: desiredName);
-              try {
-                await _databaseService.saveChatRoom(displayRoom);
-                await chatProvider.loadChatRooms();
-              } catch (e) {
-                debugPrint('Failed to persist chat room name: $e');
-              }
-              try {
-                await FirebaseService().saveChatRoomToFirebase(displayRoom);
-              } catch (e) {
-                debugPrint('Failed to save chat room to Firebase: $e');
-              }
-            } else {
-              displayRoom = existing;
-            }
-          }
-        } catch (_) {}
-
-        Navigator.of(context, rootNavigator: true).push(
-          MaterialPageRoute(
-            builder: (context) => ChatScreen(chatRoom: displayRoom),
-          ),
-        );
-        return;
-      }
-
-      // Create a private chat room locally
+      // Use the new deterministic room creation method
       final roomName = otherUser.username.isNotEmpty
-          ? 'Chat with ${otherUser.username}'
+          ? otherUser.username
           : 'Private Chat';
-      final chatRoom = await chatProvider.createChatRoom(
-        name: roomName,
-        creator: currentUser,
-        isPrivate: true,
+
+      final chatRoom = await chatProvider.getOrCreatePrivateRoomWith(
+        currentUser,
+        otherUser,
+        displayName: roomName,
       );
 
-      // Add the other user as a participant
-      await chatProvider.joinChatRoom(chatRoom.id, otherUser);
+      // Set current chat room in provider
+      chatProvider.setCurrentChatRoom(chatRoom);
 
-      // Re-fetch the saved room (so participants are up-to-date) and navigate
-      final updatedRoom = await _databaseService.getChatRoom(chatRoom.id);
-      final toOpen = updatedRoom ?? chatRoom;
-
-      try {
-        await FirebaseService().saveChatRoomToFirebase(toOpen);
-      } catch (e) {
-        debugPrint('Failed to save new chat room to Firebase: $e');
-      }
       // Navigate to the chat screen
       if (!mounted) return;
       Navigator.of(context, rootNavigator: true).push(
-        MaterialPageRoute(builder: (context) => ChatScreen(chatRoom: toOpen)),
+        MaterialPageRoute(builder: (context) => ChatScreen(chatRoom: chatRoom)),
       );
     } catch (e) {
       if (!mounted) return;

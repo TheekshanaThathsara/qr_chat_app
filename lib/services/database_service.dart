@@ -20,7 +20,7 @@ class DatabaseService {
 
   static Database? _database;
   static const String _databaseName = 'instant_chat.db';
-  static const int _databaseVersion = 4;
+  static const int _databaseVersion = 3;
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -50,7 +50,6 @@ class DatabaseService {
         created_at TEXT NOT NULL,
         created_by TEXT NOT NULL,
         is_private INTEGER NOT NULL DEFAULT 0,
-        is_pinned INTEGER NOT NULL DEFAULT 0,
         qr_code TEXT
       )
     ''');
@@ -100,13 +99,10 @@ class DatabaseService {
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
-      // Add synced column to messages table if it doesn't already exist
-      final exists = await _columnExists(db, 'messages', 'synced');
-      if (!exists) {
-        await db.execute(
-          'ALTER TABLE messages ADD COLUMN synced INTEGER NOT NULL DEFAULT 0',
-        );
-      }
+      // Add synced column to messages table
+      await db.execute(
+        'ALTER TABLE messages ADD COLUMN synced INTEGER NOT NULL DEFAULT 0',
+      );
     }
     // Version 3: add email column to users table if missing
     if (oldVersion < 3) {
@@ -116,35 +112,6 @@ class DatabaseService {
         // If the column already exists or alter failed, log and continue
         // (Some devices may already have this column)
       }
-    }
-    // Version 4: add is_pinned column to chat_rooms if missing
-    if (oldVersion < 4) {
-      final exists = await _columnExists(db, 'chat_rooms', 'is_pinned');
-      if (!exists) {
-        try {
-          await db.execute(
-            'ALTER TABLE chat_rooms ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0',
-          );
-        } catch (e) {
-          // ignore
-        }
-      }
-    }
-  }
-
-  /// Returns true if [columnName] exists on [tableName]. Uses PRAGMA table_info.
-  Future<bool> _columnExists(Database db, String tableName, String columnName) async {
-    try {
-      final List<Map<String, Object?>> info =
-          await db.rawQuery('PRAGMA table_info($tableName)');
-      for (final row in info) {
-        final name = row['name']?.toString();
-        if (name == columnName) return true;
-      }
-      return false;
-    } catch (e) {
-      // If anything goes wrong assume column doesn't exist so migration will try.
-      return false;
     }
   }
 
@@ -168,7 +135,6 @@ class DatabaseService {
       'created_at': chatRoom.createdAt.toIso8601String(),
       'created_by': chatRoom.createdBy,
       'is_private': chatRoom.isPrivate ? 1 : 0,
-  'is_pinned': chatRoom.isPinned ? 1 : 0,
       'qr_code': chatRoom.qrCode,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
@@ -217,11 +183,80 @@ class DatabaseService {
         'lastMessage': lastMessageJson,
         'createdAt': maps[i]['created_at'],
         'createdBy': maps[i]['created_by'],
-  'isPrivate': maps[i]['is_private'] == 1,
-  'is_pinned': maps[i]['is_pinned'] == 1,
-  'qrCode': maps[i]['qr_code'],
+        'isPrivate': maps[i]['is_private'] == 1,
+        'qrCode': maps[i]['qr_code'],
       });
     });
+  }
+
+  /// Get chat rooms where the specified user is a participant
+  Future<List<ChatRoom>> getChatRoomsForUser(String userId) async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'chat_rooms',
+      orderBy: 'created_at DESC',
+    );
+
+    List<ChatRoom> userChatRooms = [];
+
+    for (final row in maps) {
+      try {
+        // Parse participants JSON if available
+        List<dynamic> participantsJson = [];
+        try {
+          if (row['participants'] != null) {
+            participantsJson = jsonDecode(row['participants']);
+          }
+        } catch (e) {
+          // Skip malformed participants data
+          continue;
+        }
+
+        // Check if the user is a participant in this room
+        final participantIds = participantsJson
+            .map((p) => (p as Map<String, dynamic>)['id']?.toString())
+            .whereType<String>()
+            .toList();
+
+        if (participantIds.contains(userId)) {
+          // Parse last_message which may be stored as JSON string or as null
+          dynamic lastMessageField = row['last_message'];
+          dynamic lastMessageJson;
+          try {
+            if (lastMessageField == null) {
+              lastMessageJson = null;
+            } else if (lastMessageField is String) {
+              lastMessageJson = jsonDecode(lastMessageField);
+            } else if (lastMessageField is Map) {
+              lastMessageJson = lastMessageField;
+            } else {
+              lastMessageJson = null;
+            }
+          } catch (e) {
+            lastMessageJson = null;
+          }
+
+          userChatRooms.add(
+            ChatRoom.fromJson({
+              'id': row['id'],
+              'name': row['name'],
+              'description': row['description'],
+              'participants': participantsJson,
+              'lastMessage': lastMessageJson,
+              'createdAt': row['created_at'],
+              'createdBy': row['created_by'],
+              'isPrivate': row['is_private'] == 1,
+              'qrCode': row['qr_code'],
+            }),
+          );
+        }
+      } catch (e) {
+        // Skip malformed rows
+        continue;
+      }
+    }
+
+    return userChatRooms;
   }
 
   /// Return raw chat_rooms rows from SQLite for debugging.
@@ -272,9 +307,8 @@ class DatabaseService {
         'lastMessage': lastMessageJson,
         'createdAt': maps[0]['created_at'],
         'createdBy': maps[0]['created_by'],
-  'isPrivate': maps[0]['is_private'] == 1,
-  'is_pinned': maps[0]['is_pinned'] == 1,
-  'qrCode': maps[0]['qr_code'],
+        'isPrivate': maps[0]['is_private'] == 1,
+        'qrCode': maps[0]['qr_code'],
       });
     }
     return null;
@@ -322,9 +356,8 @@ class DatabaseService {
         'lastMessage': lastMessageJson,
         'createdAt': maps[0]['created_at'],
         'createdBy': maps[0]['created_by'],
-  'isPrivate': maps[0]['is_private'] == 1,
-  'is_pinned': maps[0]['is_pinned'] == 1,
-  'qrCode': maps[0]['qr_code'],
+        'isPrivate': maps[0]['is_private'] == 1,
+        'qrCode': maps[0]['qr_code'],
       });
     }
     return null;
@@ -382,7 +415,6 @@ class DatabaseService {
             'createdAt': row['created_at'],
             'createdBy': row['created_by'],
             'isPrivate': row['is_private'] == 1,
-            'is_pinned': row['is_pinned'] == 1,
             'qrCode': row['qr_code'],
           });
         }
@@ -521,17 +553,6 @@ class DatabaseService {
     String path = join(await getDatabasesPath(), _databaseName);
     await databaseFactory.deleteDatabase(path);
     _database = null;
-  }
-
-  Future<void> clearChatMessages(String chatRoomId) async {
-    final db = await database;
-    await db.delete('messages', where: 'chat_room_id = ?', whereArgs: [chatRoomId]);
-    await db.update('chat_rooms', {'last_message': null}, where: 'id = ?', whereArgs: [chatRoomId]);
-  }
-
-  Future<void> togglePinChatRoom(String chatRoomId, bool pin) async {
-    final db = await database;
-    await db.update('chat_rooms', {'is_pinned': pin ? 1 : 0}, where: 'id = ?', whereArgs: [chatRoomId]);
   }
 
   // Contact methods
