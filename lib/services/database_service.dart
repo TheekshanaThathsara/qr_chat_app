@@ -189,6 +189,76 @@ class DatabaseService {
     });
   }
 
+  /// Get chat rooms where the specified user is a participant
+  Future<List<ChatRoom>> getChatRoomsForUser(String userId) async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'chat_rooms',
+      orderBy: 'created_at DESC',
+    );
+
+    List<ChatRoom> userChatRooms = [];
+
+    for (final row in maps) {
+      try {
+        // Parse participants JSON if available
+        List<dynamic> participantsJson = [];
+        try {
+          if (row['participants'] != null) {
+            participantsJson = jsonDecode(row['participants']);
+          }
+        } catch (e) {
+          // Skip malformed participants data
+          continue;
+        }
+
+        // Check if the user is a participant in this room
+        final participantIds = participantsJson
+            .map((p) => (p as Map<String, dynamic>)['id']?.toString())
+            .whereType<String>()
+            .toList();
+
+        if (participantIds.contains(userId)) {
+          // Parse last_message which may be stored as JSON string or as null
+          dynamic lastMessageField = row['last_message'];
+          dynamic lastMessageJson;
+          try {
+            if (lastMessageField == null) {
+              lastMessageJson = null;
+            } else if (lastMessageField is String) {
+              lastMessageJson = jsonDecode(lastMessageField);
+            } else if (lastMessageField is Map) {
+              lastMessageJson = lastMessageField;
+            } else {
+              lastMessageJson = null;
+            }
+          } catch (e) {
+            lastMessageJson = null;
+          }
+
+          userChatRooms.add(
+            ChatRoom.fromJson({
+              'id': row['id'],
+              'name': row['name'],
+              'description': row['description'],
+              'participants': participantsJson,
+              'lastMessage': lastMessageJson,
+              'createdAt': row['created_at'],
+              'createdBy': row['created_by'],
+              'isPrivate': row['is_private'] == 1,
+              'qrCode': row['qr_code'],
+            }),
+          );
+        }
+      } catch (e) {
+        // Skip malformed rows
+        continue;
+      }
+    }
+
+    return userChatRooms;
+  }
+
   /// Return raw chat_rooms rows from SQLite for debugging.
   Future<List<Map<String, dynamic>>> getRawChatRooms() async {
     final db = await database;

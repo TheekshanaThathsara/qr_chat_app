@@ -17,6 +17,7 @@ class ChatProvider with ChangeNotifier {
   List<ChatRoom> _chatRooms = [];
   List<Message> _currentMessages = [];
   ChatRoom? _currentChatRoom;
+  User? _currentUser; // Store current user
   bool _isLoading = false;
   bool _isConnected = false;
   StreamSubscription<List<Message>>? _messageSubscription;
@@ -28,6 +29,7 @@ class ChatProvider with ChangeNotifier {
   List<ChatRoom> get chatRooms => _chatRooms;
   List<Message> get currentMessages => _currentMessages;
   ChatRoom? get currentChatRoom => _currentChatRoom;
+  User? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
   bool get isConnected => _isConnected;
   bool get isOnline => _isOnline;
@@ -44,6 +46,7 @@ class ChatProvider with ChangeNotifier {
 
   Future<void> initializeChat(User currentUser) async {
     _isLoading = true;
+    _currentUser = currentUser; // Store the current user
     notifyListeners();
 
     try {
@@ -75,10 +78,11 @@ class ChatProvider with ChangeNotifier {
                         final participants = room.participants
                             .map((p) {
                               try {
-                                // If already a User object
-                                return (p as dynamic).id?.toString();
+                                // If already a User object, access id property directly
+                                return p.id;
                               } catch (_) {
                                 try {
+                                  // Fallback for Map representations
                                   return (p as Map)['id']?.toString() ??
                                       (p as Map)['userId']?.toString();
                                 } catch (_) {
@@ -131,7 +135,7 @@ class ChatProvider with ChangeNotifier {
                     }
                   }
 
-                  // Reload chat rooms from local DB to update UI
+                  // Reload chat rooms from local DB to update UI (only for current user)
                   await loadChatRooms();
                 } catch (e) {
                   debugPrint('Error processing remote chat rooms: $e');
@@ -143,7 +147,9 @@ class ChatProvider with ChangeNotifier {
             );
             // Ensure we have active message listeners for rooms the user is in
             try {
-              final localRooms = await _databaseService.getChatRooms();
+              final localRooms = await _databaseService.getChatRoomsForUser(
+                currentUser.id,
+              );
               for (var room in localRooms) {
                 final participantIds = room.participants
                     .map((p) => p.id)
@@ -208,7 +214,15 @@ class ChatProvider with ChangeNotifier {
 
   Future<void> loadChatRooms() async {
     try {
-      _chatRooms = await _databaseService.getChatRooms();
+      if (_currentUser != null) {
+        // Load only chat rooms where the current user is a participant
+        _chatRooms = await _databaseService.getChatRoomsForUser(
+          _currentUser!.id,
+        );
+      } else {
+        // Fallback to empty list if no current user
+        _chatRooms = [];
+      }
       notifyListeners();
     } catch (e) {
       debugPrint('Error loading chat rooms: $e');
@@ -454,6 +468,98 @@ class ChatProvider with ChangeNotifier {
     // await _socketService.disconnect(); // Commented out for now
     _isConnected = false;
     notifyListeners();
+  }
+
+  /// Get or create a deterministic 1:1 private room between two users.
+  /// This ensures both users always end up in the same room when they scan each other's QR codes.
+  Future<ChatRoom> getOrCreatePrivateRoomWith(
+    User currentUser,
+    User otherUser, {
+    String? displayName,
+  }) async {
+    try {
+      // Create deterministic room ID by sorting user IDs
+      final List<String> sortedIds = [currentUser.id, otherUser.id]..sort();
+      final String deterministicRoomId = sortedIds.join('_');
+
+      debugPrint(
+        'ChatProvider: Looking for room with ID: $deterministicRoomId',
+      );
+
+      // 1. Check local database first
+      ChatRoom? existingRoom = await _databaseService
+          .getPrivateRoomBetweenUsers(currentUser.id, otherUser.id);
+
+      if (existingRoom != null) {
+        debugPrint(
+          'ChatProvider: Found existing local room: ${existingRoom.id}',
+        );
+        // Make sure the room has the deterministic ID
+        if (existingRoom.id != deterministicRoomId) {
+          // Update room to use deterministic ID
+          existingRoom = existingRoom.copyWith(id: deterministicRoomId);
+          await _databaseService.saveChatRoom(existingRoom);
+        }
+        _ensureRoomMessageListener(existingRoom.id);
+        await loadChatRooms();
+        return existingRoom;
+      }
+
+      // 2. Check Firestore for existing room with deterministic ID
+      final ChatRoom? remoteRoom = await _firebaseService.fetchChatRoomById(
+        deterministicRoomId,
+      );
+      if (remoteRoom != null) {
+        debugPrint('ChatProvider: Found remote room: ${remoteRoom.id}');
+        // Save locally and set up listeners
+        await _databaseService.saveChatRoom(remoteRoom);
+        _ensureRoomMessageListener(remoteRoom.id);
+        await loadChatRooms();
+        return remoteRoom;
+      }
+
+      // 3. Create new deterministic room
+      debugPrint(
+        'ChatProvider: Creating new deterministic room: $deterministicRoomId',
+      );
+      final String roomName =
+          displayName ??
+          (otherUser.username.isNotEmpty
+              ? 'Chat with ${otherUser.username}'
+              : 'Private Chat');
+
+      final ChatRoom newRoom = ChatRoom(
+        id: deterministicRoomId,
+        name: roomName,
+        participants: [currentUser, otherUser],
+        createdAt: DateTime.now(),
+        createdBy: currentUser.id,
+        isPrivate: true,
+      );
+
+      // Save locally first
+      await _databaseService.saveChatRoom(newRoom);
+
+      // Try to save to Firestore (non-fatal if it fails)
+      try {
+        await _firebaseService.saveChatRoomToFirebase(newRoom);
+        debugPrint(
+          'ChatProvider: Saved new room to Firestore: $deterministicRoomId',
+        );
+      } catch (e) {
+        debugPrint('ChatProvider: Failed to save room to Firestore: $e');
+      }
+
+      // Set up listeners and refresh
+      _ensureRoomMessageListener(newRoom.id);
+      await loadChatRooms();
+
+      return newRoom;
+    } catch (e, stackTrace) {
+      debugPrint('ChatProvider: Error in getOrCreatePrivateRoomWith: $e');
+      debugPrint('Stack trace: $stackTrace');
+      rethrow;
+    }
   }
 
   @override
