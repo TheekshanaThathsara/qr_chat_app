@@ -68,41 +68,68 @@ class EnhancedConversationTile extends StatelessWidget {
   }
 
   Widget _buildAvatar(String otherUserName, String? otherUserProfileImage, bool hasUnread) {
-    return Container(
-      width: 56,
-      height: 56,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: hasUnread 
-            ? Border.all(color: AppTheme.primaryColor, width: 2)
-            : null,
-        gradient: hasUnread 
-            ? AppTheme.primaryGradient.scale(0.2) 
-            : null,
-      ),
-      child: Container(
-        margin: hasUnread ? const EdgeInsets.all(2) : EdgeInsets.zero,
-        decoration: const BoxDecoration(shape: BoxShape.circle),
-        child: CircleAvatar(
-          radius: hasUnread ? 25 : 28,
-          backgroundImage: otherUserProfileImage != null
-              ? NetworkImage(otherUserProfileImage)
-              : null,
-          backgroundColor: hasUnread 
-              ? AppTheme.primaryColor 
-              : AppTheme.primaryColor.withOpacity(0.7),
-          child: otherUserProfileImage == null
-              ? Text(
-                  otherUserName.isNotEmpty ? otherUserName[0].toUpperCase() : '?',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    fontSize: hasUnread ? 18 : 16,
-                  ),
-                )
-              : null,
+    final unreadCount = conversation.getUnreadCount(currentUserId);
+    
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: 56,
+          height: 56,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFFFF9800), // Bright orange
+                Color(0xFFD84315), // Dark orange
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: CircleAvatar(
+            radius: 28,
+            backgroundImage: otherUserProfileImage != null
+                ? NetworkImage(otherUserProfileImage)
+                : null,
+            backgroundColor: Colors.transparent,
+            child: otherUserProfileImage == null
+                ? Text(
+                    otherUserName.isNotEmpty ? otherUserName[0].toUpperCase() : '?',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      fontSize: 18,
+                    ),
+                  )
+                : null,
+          ),
         ),
-      ),
+        if (hasUnread && unreadCount > 0)
+          Positioned(
+            right: -4,
+            top: -4,
+            child: Container(
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                color: Color(0xFF00C853), // WhatsApp green
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                unreadCount > 99 ? '99+' : unreadCount.toString(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+      ],
     );
   }
 

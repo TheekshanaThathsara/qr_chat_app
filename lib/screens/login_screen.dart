@@ -110,7 +110,17 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
-          gradient: AppTheme.primaryGradient,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white,
+              Color(0xFFFFF3E0), // Very light orange
+              Color(0xFFFFE0B2), // Light orange
+              Colors.orange,
+            ],
+            stops: [0.0, 0.3, 0.7, 1.0],
+          ),
         ),
         child: SafeArea(
           child: Center(
@@ -151,13 +161,21 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
           width: 120,
           height: 120,
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.orange,
+                Color(0xFFFF5722),
+              ],
+            ),
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
+                color: Colors.orange.withOpacity(0.3),
                 blurRadius: 20,
                 spreadRadius: 5,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
@@ -173,7 +191,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
           style: TextStyle(
             fontSize: 32,
             fontWeight: FontWeight.bold,
-            color: Colors.white,
+            color: Color(0xFF2E2E2E),
           ),
         ),
         const SizedBox(height: 8),
@@ -181,7 +199,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
           'Sign in to continue chatting',
           style: TextStyle(
             fontSize: 16,
-            color: Colors.white.withOpacity(0.8),
+            color: const Color(0xFF2E2E2E).withOpacity(0.7),
           ),
         ),
       ],
@@ -190,40 +208,53 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
 
   Widget _buildLoginCard() {
     return Card(
-      elevation: 8,
-      shadowColor: Colors.black.withOpacity(0.2),
+      elevation: 12,
+      shadowColor: Colors.orange.withOpacity(0.2),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text(
-                'Sign In',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textPrimaryColor,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 32),
-              
-              // Email field
-              _buildEmailField(),
-              const SizedBox(height: 20),
-              
-              // Password field
-              _buildPasswordField(),
-              const SizedBox(height: 32),
-              
-              // Login button
-              _buildLoginButton(),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.white,
+              Color(0xFFFFFBF0), // Very light orange tint
             ],
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'Sign In',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2E2E2E),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 32),
+                
+                // Email field
+                _buildEmailField(),
+                const SizedBox(height: 20),
+                
+                // Password field
+                _buildPasswordField(),
+                const SizedBox(height: 32),
+                
+                // Login button
+                _buildLoginButton(),
+              ],
+            ),
           ),
         ),
       ),
@@ -234,6 +265,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     return TextFormField(
       controller: _emailController,
       keyboardType: TextInputType.emailAddress,
+      style: const TextStyle(color: Colors.black),
       decoration: const InputDecoration(
         labelText: 'Email',
         hintText: 'Enter your email',
@@ -257,6 +289,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     return TextFormField(
       controller: _passwordController,
       obscureText: _obscurePassword,
+      style: const TextStyle(color: Colors.black),
       decoration: InputDecoration(
         labelText: 'Password',
         hintText: 'Enter your password',
@@ -331,14 +364,14 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
         text: TextSpan(
           text: "Don't have an account? ",
           style: TextStyle(
-            color: Colors.white.withOpacity(0.8),
+            color: const Color(0xFF2E2E2E).withOpacity(0.7),
             fontSize: 16,
           ),
           children: const [
             TextSpan(
               text: 'Sign Up',
               style: TextStyle(
-                color: Colors.white,
+                color: Colors.orange,
                 fontWeight: FontWeight.bold,
                 decoration: TextDecoration.underline,
               ),

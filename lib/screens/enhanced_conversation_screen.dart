@@ -77,7 +77,7 @@ class _EnhancedConversationScreenState extends State<EnhancedConversationScreen>
 
   void _loadMessages() {
     final conversationProvider = Provider.of<ConversationProvider>(context, listen: false);
-    conversationProvider.loadMessages(widget.conversation.id);
+    conversationProvider.loadMessages(widget.conversation.id, currentUserId: widget.currentUserId);
   }
 
   void _sendMessage() async {

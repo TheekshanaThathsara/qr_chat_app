@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 class AppTheme {
   // Color palette
-  static const Color primaryColor = Color(0xFF667eea);
-  static const Color secondaryColor = Color(0xFF764ba2);
-  static const Color accentColor = Color(0xFF7c4dff);
+  static const Color primaryColor = Color(0xFFFF9800);
+  static const Color secondaryColor = Color(0xFFFF5722);
+  static const Color accentColor = Color(0xFFFF6D00);
   static const Color backgroundColor = Color(0xFFF8F9FA);
   static const Color surfaceColor = Color(0xFFFFFFFF);
   static const Color cardColor = Color(0xFFFFFFFF);

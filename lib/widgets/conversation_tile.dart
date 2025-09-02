@@ -33,7 +33,7 @@ class ConversationTile extends StatelessWidget {
                 ),
               )
             : null,
-        backgroundColor: Colors.blue,
+        backgroundColor: Colors.orange,
       ),
       title: Text(
         otherUserName,
@@ -75,7 +75,7 @@ class ConversationTile extends StatelessWidget {
             Container(
               padding: EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: Colors.blue,
+                color: Colors.orange,
                 shape: BoxShape.circle,
               ),
               child: Text(

@@ -202,7 +202,7 @@ class ConversationProvider with ChangeNotifier {
   }
 
   // Load messages for a specific conversation with real-time updates
-  Future<void> loadMessages(String conversationId) async {
+  Future<void> loadMessages(String conversationId, {String? currentUserId}) async {
     try {
       print('💬 ConversationProvider: Loading messages for conversation: $conversationId');
       
@@ -220,6 +220,20 @@ class ConversationProvider with ChangeNotifier {
       _currentMessages = localMessages;
       _isLoading = false;
       notifyListeners();
+
+      // Reset unread count for current user
+      int index = _conversations.indexWhere((c) => c.id == conversationId);
+      if (index != -1 && currentUserId != null) {
+        final conversation = _conversations[index];
+        final updatedUnreadCounts = Map<String, int>.from(conversation.unreadCounts);
+        updatedUnreadCounts[currentUserId] = 0;
+        _conversations[index] = conversation.copyWith(unreadCounts: updatedUnreadCounts);
+        
+        // Update in Firebase and local database
+        await _firebaseService.updateConversation(_conversations[index]);
+        await _databaseService.insertOrUpdateConversation(_conversations[index]);
+        notifyListeners();
+      }
 
       // Set up real-time listener for Firebase updates
       _messagesSubscription = _firebaseService.listenToMessages(conversationId).listen(
@@ -282,6 +296,21 @@ class ConversationProvider with ChangeNotifier {
 
       // Update conversation's last message
       await _updateConversationLastMessage(conversationId, content, DateTime.now());
+
+      // Increment unread count for the other user
+      int index = _conversations.indexWhere((c) => c.id == conversationId);
+      if (index != -1) {
+        final conversation = _conversations[index];
+        String otherUserId = senderId == conversation.user1Id ? conversation.user2Id : conversation.user1Id;
+        final updatedUnreadCounts = Map<String, int>.from(conversation.unreadCounts);
+        updatedUnreadCounts[otherUserId] = (updatedUnreadCounts[otherUserId] ?? 0) + 1;
+        _conversations[index] = conversation.copyWith(unreadCounts: updatedUnreadCounts);
+        
+        // Update in Firebase and local database
+        await _firebaseService.updateConversation(_conversations[index]);
+        await _databaseService.insertOrUpdateConversation(_conversations[index]);
+        notifyListeners();
+      }
 
       print('✅ ConversationProvider: Message sent successfully');
       

@@ -456,14 +456,21 @@ class _DirectMessageHomeScreenState extends State<DirectMessageHomeScreen> with 
                   Container(
                     width: 120,
                     height: 120,
-                    decoration: BoxDecoration(
-                      gradient: AppTheme.primaryGradient.scale(0.1),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Color(0xFFFF9800), // Bright orange
+                          Color(0xFFD84315), // Dark orange
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(
+                    child: const Icon(
                       Icons.chat_bubble_outline,
                       size: 60,
-                      color: AppTheme.primaryColor.withOpacity(0.7),
+                      color: Colors.white,
                     ),
                   ),
                   SizedBox(height: 24),
@@ -524,30 +531,56 @@ class _DirectMessageHomeScreenState extends State<DirectMessageHomeScreen> with 
           );
         },
       ),
-      floatingActionButton: Container(
-        width: 64,
-        height: 64,
-        decoration: BoxDecoration(
-          gradient: AppTheme.primaryGradient,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.primaryColor.withOpacity(0.3),
-              blurRadius: 12,
-              spreadRadius: 4,
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              gradient: AppTheme.primaryGradient,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.primaryColor.withOpacity(0.3),
+                  blurRadius: 10,
+                  spreadRadius: 3,
+                ),
+              ],
             ),
-          ],
-        ),
-        child: FloatingActionButton(
-          onPressed: _scanQRCode,
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          child: const Icon(
-            Icons.qr_code_scanner,
-            color: Colors.white,
-            size: 28,
+            child: IconButton(
+              icon: const Icon(Icons.qr_code, color: Colors.white, size: 28),
+              onPressed: _showMyQRCode,
+              tooltip: 'Show My QR Code',
+            ),
           ),
-        ),
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              gradient: AppTheme.primaryGradient,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.primaryColor.withOpacity(0.3),
+                  blurRadius: 12,
+                  spreadRadius: 4,
+                ),
+              ],
+            ),
+            child: FloatingActionButton(
+              onPressed: _scanQRCode,
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              child: const Icon(
+                Icons.qr_code_scanner,
+                color: Colors.white,
+                size: 28,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

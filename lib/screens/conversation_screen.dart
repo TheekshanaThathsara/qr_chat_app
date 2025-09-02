@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/conversation.dart';
-import '../models/message.dart';
 import '../providers/conversation_provider.dart';
 import '../providers/user_provider.dart';
 
@@ -10,10 +9,10 @@ class ConversationScreen extends StatefulWidget {
   final String currentUserId;
 
   const ConversationScreen({
-    Key? key,
+    super.key,
     required this.conversation,
     required this.currentUserId,
-  }) : super(key: key);
+  });
 
   @override
   State<ConversationScreen> createState() => _ConversationScreenState();
@@ -44,7 +43,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
   void _loadMessages() {
     final conversationProvider = Provider.of<ConversationProvider>(context, listen: false);
-    conversationProvider.loadMessages(widget.conversation.id);
+    conversationProvider.loadMessages(widget.conversation.id, currentUserId: widget.currentUserId);
   }
 
   void _sendMessage() async {
@@ -76,7 +75,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     if (_scrollController.hasClients) {
       _scrollController.animateTo(
         _scrollController.position.maxScrollExtent,
-        duration: Duration(milliseconds: 300),
+        duration: const Duration(milliseconds: 300),
         curve: Curves.easeOut,
       );
     }
@@ -88,7 +87,21 @@ class _ConversationScreenState extends State<ConversationScreen> {
     final otherUserProfileImage = widget.conversation.getOtherUserProfileImage(widget.currentUserId);
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFFFF9800), // Bright orange
+                Color(0xFFD84315), // Dark orange
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         title: Row(
           children: [
             CircleAvatar(
@@ -96,31 +109,36 @@ class _ConversationScreenState extends State<ConversationScreen> {
               backgroundImage: otherUserProfileImage != null
                   ? NetworkImage(otherUserProfileImage)
                   : null,
+              backgroundColor: Colors.orange[300],
               child: otherUserProfileImage == null
                   ? Text(
                       otherUserName.isNotEmpty ? otherUserName[0].toUpperCase() : '?',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
+                      style: const TextStyle(
                         color: Colors.white,
+                        fontWeight: FontWeight.bold,
                       ),
                     )
                   : null,
-              backgroundColor: Colors.blue[300],
             ),
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
                 otherUserName,
-                style: TextStyle(fontSize: 18),
+                style: const TextStyle(
+                  fontSize: 18,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
         ),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
         actions: [
           PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: Colors.white),
             onSelected: (value) {
               switch (value) {
                 case 'clear_chat':
@@ -132,8 +150,8 @@ class _ConversationScreenState extends State<ConversationScreen> {
               }
             },
             itemBuilder: (context) => [
-              PopupMenuItem(value: 'clear_chat', child: Text('Clear Chat')),
-              PopupMenuItem(value: 'block_user', child: Text('Block User')),
+              const PopupMenuItem(value: 'clear_chat', child: Text('Clear Chat')),
+              const PopupMenuItem(value: 'block_user', child: Text('Block User')),
             ],
           ),
         ],
@@ -146,11 +164,11 @@ class _ConversationScreenState extends State<ConversationScreen> {
                 final messages = conversationProvider.currentMessages;
                 
                 if (conversationProvider.isLoading && messages.isEmpty) {
-                  return Center(child: CircularProgressIndicator());
+                  return const Center(child: CircularProgressIndicator());
                 }
 
                 if (messages.isEmpty) {
-                  return Center(
+                  return const Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -164,14 +182,14 @@ class _ConversationScreenState extends State<ConversationScreen> {
                           'No messages yet',
                           style: TextStyle(
                             fontSize: 18,
-                            color: Colors.grey[600],
+                            color: Colors.black87,
                           ),
                         ),
                         SizedBox(height: 8),
                         Text(
                           'Start the conversation!',
                           style: TextStyle(
-                            color: Colors.grey[500],
+                            color: Colors.black54,
                           ),
                         ),
                       ],
@@ -189,14 +207,14 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
                 return ListView.builder(
                   controller: _scrollController,
-                  padding: EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(8),
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     final message = messages[index];
                     final isMe = message.senderId == widget.currentUserId;
                     
                     return Padding(
-                      padding: EdgeInsets.symmetric(vertical: 4),
+                      padding: const EdgeInsets.symmetric(vertical: 4),
                       child: Row(
                         mainAxisAlignment: isMe 
                             ? MainAxisAlignment.end 
@@ -208,29 +226,33 @@ class _ConversationScreenState extends State<ConversationScreen> {
                               backgroundImage: otherUserProfileImage != null
                                   ? NetworkImage(otherUserProfileImage)
                                   : null,
+                              backgroundColor: Colors.orange[300],
                               child: otherUserProfileImage == null
                                   ? Text(
                                       otherUserName.isNotEmpty ? otherUserName[0].toUpperCase() : '?',
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold,
                                         color: Colors.white,
                                       ),
                                     )
                                   : null,
-                              backgroundColor: Colors.blue[300],
                             ),
-                            SizedBox(width: 8),
+                            const SizedBox(width: 8),
                           ],
                           Flexible(
                             child: Container(
-                              padding: EdgeInsets.symmetric(
+                              padding: const EdgeInsets.symmetric(
                                 horizontal: 16,
                                 vertical: 10,
                               ),
                               decoration: BoxDecoration(
-                                color: isMe ? Colors.blue[500] : Colors.grey[200],
+                                color: isMe ? Colors.orange[500] : Colors.grey[100],
                                 borderRadius: BorderRadius.circular(18),
+                                border: Border.all(
+                                  color: isMe ? Colors.orange[500]! : Colors.grey[300]!,
+                                  width: 1,
+                                ),
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -242,11 +264,11 @@ class _ConversationScreenState extends State<ConversationScreen> {
                                       fontSize: 16,
                                     ),
                                   ),
-                                  SizedBox(height: 4),
+                                  const SizedBox(height: 4),
                                   Text(
                                     _formatTime(message.timestamp),
                                     style: TextStyle(
-                                      color: isMe ? Colors.white70 : Colors.grey[600],
+                                      color: isMe ? Colors.white70 : Colors.black54,
                                       fontSize: 12,
                                     ),
                                   ),
@@ -255,13 +277,13 @@ class _ConversationScreenState extends State<ConversationScreen> {
                             ),
                           ),
                           if (isMe) ...[
-                            SizedBox(width: 8),
+                            const SizedBox(width: 8),
                             CircleAvatar(
                               radius: 16,
-                              backgroundColor: Colors.blue[700],
+                              backgroundColor: Colors.orange[700],
                               child: Text(
                                 message.senderName.isNotEmpty ? message.senderName[0].toUpperCase() : '?',
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
@@ -278,11 +300,11 @@ class _ConversationScreenState extends State<ConversationScreen> {
             ),
           ),
           Container(
-            padding: EdgeInsets.all(8),
-            decoration: BoxDecoration(
+            padding: const EdgeInsets.all(8),
+            decoration: const BoxDecoration(
               color: Colors.white,
               border: Border(
-                top: BorderSide(color: Colors.grey[300]!),
+                top: BorderSide(color: Colors.grey, width: 0.5),
               ),
             ),
             child: Row(
@@ -290,15 +312,17 @@ class _ConversationScreenState extends State<ConversationScreen> {
                 Expanded(
                   child: TextField(
                     controller: _messageController,
+                    style: const TextStyle(color: Colors.black),
                     decoration: InputDecoration(
                       hintText: 'Type a message...',
+                      hintStyle: const TextStyle(color: Colors.black54),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(25),
                         borderSide: BorderSide.none,
                       ),
                       filled: true,
-                      fillColor: Colors.grey[100],
-                      contentPadding: EdgeInsets.symmetric(
+                      fillColor: Colors.grey[50],
+                      contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 10,
                       ),
@@ -308,15 +332,15 @@ class _ConversationScreenState extends State<ConversationScreen> {
                     onSubmitted: (_) => _sendMessage(),
                   ),
                 ),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 Container(
-                  decoration: BoxDecoration(
-                    color: Colors.blue,
+                  decoration: const BoxDecoration(
+                    color: Colors.orange,
                     shape: BoxShape.circle,
                   ),
                   child: IconButton(
                     onPressed: _sendMessage,
-                    icon: Icon(
+                    icon: const Icon(
                       Icons.send,
                       color: Colors.white,
                     ),
@@ -348,22 +372,22 @@ class _ConversationScreenState extends State<ConversationScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Clear Chat'),
-        content: Text('Are you sure you want to clear all messages in this chat?'),
+        title: const Text('Clear Chat'),
+        content: const Text('Are you sure you want to clear all messages in this chat?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancel'),
+            child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () {
               // TODO: Implement clear chat functionality
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Chat cleared')),
+                const SnackBar(content: Text('Chat cleared')),
               );
             },
-            child: Text('Clear'),
+            child: const Text('Clear'),
           ),
         ],
       ),
@@ -376,12 +400,12 @@ class _ConversationScreenState extends State<ConversationScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Block User'),
+        title: const Text('Block User'),
         content: Text('Are you sure you want to block $otherUserName?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancel'),
+            child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () {
@@ -391,7 +415,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
                 SnackBar(content: Text('$otherUserName blocked')),
               );
             },
-            child: Text('Block'),
+            child: const Text('Block'),
           ),
         ],
       ),
