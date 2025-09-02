@@ -7,7 +7,7 @@ enum MessageType {
 
 class Message {
   final String id;
-  final String chatRoomId;
+  final String conversationId;
   final String senderId;
   final String senderName;
   final String content;
@@ -19,7 +19,7 @@ class Message {
 
   Message({
     required this.id,
-    required this.chatRoomId,
+    required this.conversationId,
     required this.senderId,
     required this.senderName,
     required this.content,
@@ -33,7 +33,7 @@ class Message {
   factory Message.fromJson(Map<String, dynamic> json) {
     return Message(
       id: json['id'],
-      chatRoomId: json['chatRoomId'],
+      conversationId: json['conversationId'],
       senderId: json['senderId'],
       senderName: json['senderName'],
       content: json['content'],
@@ -48,7 +48,7 @@ class Message {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'chatRoomId': chatRoomId,
+      'conversationId': conversationId,
       'senderId': senderId,
       'senderName': senderName,
       'content': content,
@@ -62,7 +62,7 @@ class Message {
 
   Message copyWith({
     String? id,
-    String? chatRoomId,
+    String? conversationId,
     String? senderId,
     String? senderName,
     String? content,
@@ -74,7 +74,7 @@ class Message {
   }) {
     return Message(
       id: id ?? this.id,
-      chatRoomId: chatRoomId ?? this.chatRoomId,
+      conversationId: conversationId ?? this.conversationId,
       senderId: senderId ?? this.senderId,
       senderName: senderName ?? this.senderName,
       content: content ?? this.content,

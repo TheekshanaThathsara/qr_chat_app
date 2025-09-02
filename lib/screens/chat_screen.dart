@@ -41,6 +41,11 @@ class _ChatScreenState extends State<ChatScreen> {
   void _initializeChat() {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
     chatProvider.setCurrentChatRoom(widget.chatRoom);
+    
+    // Force reload messages when entering the chat
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      chatProvider.loadMessages(widget.chatRoom.id);
+    });
   }
 
   @override

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:instant_chat_app/providers/user_provider.dart';
-import 'package:instant_chat_app/screens/home_screen.dart';
+import 'package:instant_chat_app/screens/direct_message_home_screen.dart';
 import 'package:instant_chat_app/screens/login_screen.dart';
 
 class WelcomeScreen extends StatefulWidget {
@@ -52,7 +52,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       } else {
         // Fallback: navigate to home if user not available for some reason
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          MaterialPageRoute(builder: (context) => const DirectMessageHomeScreen()),
         );
       }
     } catch (e) {
@@ -105,7 +105,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 Navigator.of(context).pop();
                 // After dismissing the QR dialog, navigate to Home
                 Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (context) => const HomeScreen()),
+                  MaterialPageRoute(builder: (context) => const DirectMessageHomeScreen()),
                 );
               },
               child: const Text('Continue'),
@@ -174,7 +174,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   onPressed: () {
                     Navigator.of(context).pushReplacement(
                       MaterialPageRoute(
-                        builder: (context) => const HomeScreen(),
+                        builder: (context) => const DirectMessageHomeScreen(),
                       ),
                     );
                   },

@@ -9,6 +9,7 @@ import 'package:instant_chat_app/services/database_service.dart';
 import 'package:instant_chat_app/services/firebase_service.dart';
 import 'package:instant_chat_app/models/user.dart';
 import 'package:instant_chat_app/models/contact.dart';
+import 'package:instant_chat_app/models/chat_room.dart';
 import 'package:uuid/uuid.dart';
 import 'package:instant_chat_app/screens/settings_screen.dart';
 import 'package:instant_chat_app/screens/camera_view_screen.dart';
@@ -99,23 +100,83 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         final chatProvider = Provider.of<ChatProvider>(context, listen: false);
 
         if (userProvider.currentUser != null) {
-          // Try to join the room
+          debugPrint('🔍 QR: Processing room join for ${userProvider.currentUser!.username} -> room $roomId');
+          
+          // First, try to get room info to ensure the creator is also a participant
+          try {
+            ChatRoom? room = await chatProvider.getChatRoomById(roomId);
+            
+            if (room != null) {
+              debugPrint('🔍 QR: Found room "${room.name}" with ${room.participants.length} participants');
+              final currentParticipants = room.participants.map((p) => '${p.username}(${p.id})').join(', ');
+              debugPrint('🔍 QR: Current participants: [$currentParticipants]');
+              
+              // Make sure the room creator is also a participant
+              final creatorId = room.createdBy;
+              final creatorAlreadyParticipant = room.participants.any((p) => p.id == creatorId);
+              
+              debugPrint('🔍 QR: Room creator: $creatorId, already participant: $creatorAlreadyParticipant');
+              
+              if (!creatorAlreadyParticipant) {
+                // Try to get creator user info and add them to the room
+                try {
+                  final firebaseService = FirebaseService();
+                  final creatorUser = await firebaseService.fetchUserById(creatorId);
+                  if (creatorUser != null) {
+                    debugPrint('✅ QR: Adding room creator ${creatorUser.username} to room participants');
+                    await chatProvider.joinChatRoom(roomId, creatorUser);
+                    
+                    // Refresh the room data after adding creator
+                    room = await chatProvider.getChatRoomById(roomId);
+                  } else {
+                    debugPrint('❌ QR: Could not fetch creator user data');
+                  }
+                } catch (e) {
+                  debugPrint('❌ QR: Could not add room creator to room: $e');
+                }
+              }
+            } else {
+              debugPrint('❌ QR: Room $roomId not found');
+            }
+          } catch (e) {
+            debugPrint('❌ QR: Could not fetch room details: $e');
+          }
+          
+          // Join the room as the current user (scanner)
+          debugPrint('🔄 QR: Joining room as current user ${userProvider.currentUser!.username}');
           await chatProvider.joinChatRoom(roomId, userProvider.currentUser!);
 
-          // Find the joined room and navigate to it
-          final joinedRoom = chatProvider.chatRooms.firstWhere(
-            (room) => room.id == roomId,
-            orElse: () => throw Exception('Room not found'),
-          );
+          // Reload chat rooms to get the updated room
+          debugPrint('🔄 QR: Reloading chat rooms...');
+          await chatProvider.loadChatRooms();
 
-          if (mounted) {
+          // Find the joined room and navigate to it
+          ChatRoom? joinedRoom;
+          try {
+            joinedRoom = chatProvider.chatRooms.firstWhere(
+              (room) => room.id == roomId,
+            );
+            debugPrint('✅ QR: Found joined room in local list');
+          } catch (e) {
+            // Room not found in local list
+            debugPrint('❌ QR: Room not found in local list after joining');
+            joinedRoom = null;
+          }
+
+          if (joinedRoom != null && mounted) {
+            debugPrint('✅ QR: Navigating to chat room');
             _openChatRoom(joinedRoom);
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('Joined room: ${joinedRoom.name}')),
             );
+          } else if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Could not find the room after joining')),
+            );
           }
         }
       } catch (e) {
+        debugPrint('❌ QR: Failed to join room: $e');
         if (mounted) {
           ScaffoldMessenger.of(
             context,
