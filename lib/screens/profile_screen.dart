@@ -34,11 +34,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+  backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('Profile'),
+        iconTheme: IconThemeData(color: Colors.black),
         actions: [
           IconButton(
-            icon: Icon(_isEditing ? Icons.save : Icons.edit),
+            icon: Icon(_isEditing ? Icons.save : Icons.edit, color: Colors.black),
             onPressed: _isEditing ? _saveProfile : _toggleEdit,
           ),
         ],
@@ -63,24 +65,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ? CircleAvatar(
                               radius: 60,
                               backgroundImage: NetworkImage(user.profileImage!),
-                              backgroundColor: Theme.of(
-                                context,
-                              ).colorScheme.primary,
+                              backgroundColor: Colors.white,
                             )
                           : CircleAvatar(
                               radius: 60,
-                              backgroundColor: Theme.of(
-                                context,
-                              ).colorScheme.primary,
+                              backgroundColor: Colors.white,
                               child: Text(
                                 user.username.isNotEmpty
                                     ? user.username[0].toUpperCase()
                                     : 'U',
                                 style: TextStyle(
                                   fontSize: 48,
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onPrimary,
+                                  color: Colors.black,
                                 ),
                               ),
                             ),
@@ -93,9 +89,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               : () => _pickProfileImage(userProvider),
                           child: CircleAvatar(
                             radius: 20,
-                            backgroundColor: Theme.of(
-                              context,
-                            ).colorScheme.secondary,
+                            backgroundColor: Colors.white,
                             child: _isImageLoading
                                 ? const SizedBox(
                                     width: 20,
@@ -106,9 +100,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   )
                                 : Icon(
                                     Icons.edit,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.primary,
+                                    color: Color(0xFFFF9800),
                                   ),
                           ),
                         ),
@@ -118,6 +110,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 32),
                 Card(
+                  color: Colors.white,
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
@@ -125,7 +118,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         Text(
                           'Personal Information',
-                          style: Theme.of(context).textTheme.titleLarge,
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white),
                         ),
                         const SizedBox(height: 16),
                         Row(
@@ -134,9 +127,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               child: TextField(
                                 controller: _nameController,
                                 enabled: _isEditing,
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   labelText: 'Username',
-                                  border: OutlineInputBorder(),
+                                  border: OutlineInputBorder(
+                                    borderSide: BorderSide(color: Color(0xFFFF9800)),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderSide: BorderSide(color: Color(0xFFFF9800)),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderSide: BorderSide(color: Color(0xFFFF9800), width: 2),
+                                  ),
                                 ),
                               ),
                             ),
@@ -219,18 +220,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         TextFormField(
                           initialValue: user.id,
                           enabled: false,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'User ID',
-                            border: OutlineInputBorder(),
+                            border: OutlineInputBorder(
+                              borderSide: BorderSide(color: Color(0xFFFF9800)),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(color: Color(0xFFFF9800)),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderSide: BorderSide(color: Color(0xFFFF9800), width: 2),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 16),
                         TextFormField(
                           initialValue: user.lastSeen.toString().split(' ')[0],
                           enabled: false,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Last Seen',
-                            border: OutlineInputBorder(),
+                            border: OutlineInputBorder(
+                              borderSide: BorderSide(color: Color(0xFFFF9800)),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(color: Color(0xFFFF9800)),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderSide: BorderSide(color: Color(0xFFFF9800), width: 2),
+                            ),
                           ),
                         ),
                       ],

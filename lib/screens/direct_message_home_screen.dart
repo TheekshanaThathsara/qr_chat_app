@@ -102,115 +102,117 @@ class _DirectMessageHomeScreenState extends State<DirectMessageHomeScreen> with 
               ),
             ],
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 60,
-                height: 60,
-                decoration: const BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
-                  shape: BoxShape.circle,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: const BoxDecoration(
+                    gradient: AppTheme.primaryGradient,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.qr_code,
+                    color: Colors.white,
+                    size: 30,
+                  ),
                 ),
-                child: const Icon(
-                  Icons.qr_code,
-                  color: Colors.white,
-                  size: 30,
+                const SizedBox(height: 20),
+                const Text(
+                  'My QR Code',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textPrimaryColor,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'My QR Code',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textPrimaryColor,
+                const SizedBox(height: 8),
+                Text(
+                  'Share this QR code with friends to start chatting!',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppTheme.textSecondaryColor,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Share this QR code with friends to start chatting!',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppTheme.textSecondaryColor,
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppTheme.borderColor, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: QrImageView(
+                    data: user.id,
+                    version: QrVersions.auto,
+                    size: 200.0,
+                    backgroundColor: Colors.white,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppTheme.borderColor, width: 2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 10,
-                      spreadRadius: 2,
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.cardGradient,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppTheme.borderColor),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        'Username',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textSecondaryColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        user.username,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: AppTheme.textPrimaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                  ],
-                ),
-                child: QrImageView(
-                  data: user.id,
-                  version: QrVersions.auto,
-                  size: 200.0,
-                  backgroundColor: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  gradient: AppTheme.cardGradient,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppTheme.borderColor),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      'Username',
+                    child: const Text(
+                      'Close',
                       style: TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.textSecondaryColor,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      user.username,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
                         fontSize: 16,
-                        color: AppTheme.textPrimaryColor,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
                       ),
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    'Close',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -399,14 +401,30 @@ class _DirectMessageHomeScreenState extends State<DirectMessageHomeScreen> with 
                 }
               },
               itemBuilder: (context) => [
-                PopupMenuItem(value: 'my_qr', child: Text('My QR Code')),
-                PopupMenuItem(value: 'scan_qr', child: Text('Scan QR Code')),
-                PopupMenuDivider(),
-                PopupMenuItem(value: 'profile', child: Text('Profile')),
-                PopupMenuItem(value: 'settings', child: Text('Settings')),
-                PopupMenuDivider(),
-                PopupMenuItem(value: 'logout', child: Text('Logout')),
+                PopupMenuItem(
+                  value: 'my_qr',
+                  child: Text('My QR Code', style: TextStyle(color: Colors.black)),
+                ),
+                PopupMenuItem(
+                  value: 'scan_qr',
+                  child: Text('Scan QR Code', style: TextStyle(color: Colors.black)),
+                ),
+                PopupMenuDivider(color: Colors.white, height: 1),
+                PopupMenuItem(
+                  value: 'profile',
+                  child: Text('Profile', style: TextStyle(color: Colors.black)),
+                ),
+                PopupMenuItem(
+                  value: 'settings',
+                  child: Text('Settings', style: TextStyle(color: Colors.black)),
+                ),
+                PopupMenuDivider(color: Colors.white, height: 1),
+                PopupMenuItem(
+                  value: 'logout',
+                  child: Text('Logout', style: TextStyle(color: Colors.black)),
+                ),
               ],
+              color: Colors.white,
             ),
           ],
         ],
