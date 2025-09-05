@@ -23,10 +23,10 @@ class ChatProvider with ChangeNotifier {
   StreamSubscription<List<Message>>? _messageSubscription;
   StreamSubscription<List<ChatRoom>>? _roomsSubscription;
   final Map<String, StreamSubscription<List<Message>>>
-  _roomMessageSubscriptions = {};
-  bool _isOnline = false;
-
-  List<ChatRoom> get chatRooms => _chatRooms;
+      _roomMessageSubscriptions = {};
+  final Map<String, StreamSubscription<User?>>
+      _userProfileSubscriptions = {}; // New: Track user profile listeners
+  bool _isOnline = false;  List<ChatRoom> get chatRooms => _chatRooms;
   List<Message> get currentMessages => _currentMessages;
   ChatRoom? get currentChatRoom => _currentChatRoom;
   User? get currentUser => _currentUser;
@@ -47,6 +47,7 @@ class ChatProvider with ChangeNotifier {
   Future<void> initializeChat(User currentUser) async {
     _isLoading = true;
     _currentUser = currentUser; // Store the current user
+    debugPrint('🔄 ChatProvider: Initializing chat for user ${currentUser.username} (${currentUser.id})');
     notifyListeners();
 
     try {
@@ -279,12 +280,18 @@ class ChatProvider with ChangeNotifier {
           final participantNames = room.participants.map((p) => '${p.username}(${p.id})').join(', ');
           debugPrint('  Room: ${room.name} (${room.id}) - Participants: [$participantNames]');
         }
+        
+        // Set up real-time listeners for user profile changes
+        // Always refresh listeners to ensure they work after hot reload
+        _refreshUserProfileListeners();
+        
+        notifyListeners();
       } else {
         // Fallback to empty list if no current user
         _chatRooms = [];
         debugPrint('No current user, loaded 0 chat rooms');
+        notifyListeners();
       }
-      notifyListeners();
     } catch (e) {
       debugPrint('Error loading chat rooms: $e');
       try {
@@ -723,6 +730,134 @@ class ChatProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Update user information in all chat rooms they participate in
+  Future<void> updateUserInChatRooms(User updatedUser) async {
+    try {
+      debugPrint('🔄 ChatProvider: Updating user ${updatedUser.username} (${updatedUser.id}) in all chat rooms');
+      
+      bool hasUpdates = false;
+      
+      // Update user in local chat rooms list
+      for (int i = 0; i < _chatRooms.length; i++) {
+        final room = _chatRooms[i];
+        final participants = room.participants;
+        bool roomUpdated = false;
+        
+        for (int j = 0; j < participants.length; j++) {
+          if (participants[j].id == updatedUser.id) {
+            participants[j] = updatedUser;
+            roomUpdated = true;
+            break;
+          }
+        }
+        
+        if (roomUpdated) {
+          final updatedRoom = room.copyWith(participants: participants);
+          _chatRooms[i] = updatedRoom;
+          hasUpdates = true;
+          
+          // Save updated room to local database
+          await _databaseService.saveChatRoom(updatedRoom);
+          
+          // Try to save to Firebase for sync with other users
+          try {
+            await _firebaseService.saveChatRoomToFirebase(updatedRoom);
+          } catch (e) {
+            debugPrint('❌ Failed to sync updated room to Firebase: $e');
+          }
+          
+          debugPrint('✅ Updated user info in room: ${room.name}');
+        }
+      }
+      
+      // Update current chat room if it contains the user
+      if (_currentChatRoom != null) {
+        final currentParticipants = _currentChatRoom!.participants;
+        bool currentRoomUpdated = false;
+        
+        for (int i = 0; i < currentParticipants.length; i++) {
+          if (currentParticipants[i].id == updatedUser.id) {
+            currentParticipants[i] = updatedUser;
+            currentRoomUpdated = true;
+            break;
+          }
+        }
+        
+        if (currentRoomUpdated) {
+          _currentChatRoom = _currentChatRoom!.copyWith(participants: currentParticipants);
+          hasUpdates = true;
+        }
+      }
+      
+      if (hasUpdates) {
+        notifyListeners();
+        debugPrint('✅ ChatProvider: Successfully updated user info in chat rooms');
+      }
+      
+    } catch (e) {
+      debugPrint('❌ ChatProvider: Error updating user in chat rooms: $e');
+    }
+  }
+
+  /// Set up real-time listeners for user profile changes
+  void _setupUserProfileListeners() {
+    try {
+      debugPrint('🔄 ChatProvider: _setupUserProfileListeners called');
+      // Get all unique user IDs from chat rooms (excluding current user)
+      final Set<String> userIds = <String>{};
+      for (final room in _chatRooms) {
+        for (final participant in room.participants) {
+          if (participant.id != _currentUser?.id) {
+            userIds.add(participant.id);
+          }
+        }
+      }
+
+      debugPrint('🔄 ChatProvider: Setting up profile listeners for ${userIds.length} users: ${userIds.toList()}');
+
+      // Set up listeners for each unique user
+      for (final userId in userIds) {
+        if (!_userProfileSubscriptions.containsKey(userId)) {
+          final subscription = _firebaseService.listenToUser(userId).listen(
+            (updatedUser) {
+              if (updatedUser != null) {
+                debugPrint('🔄 ChatProvider: Received real-time update for user ${updatedUser.username} (${updatedUser.id})');
+                // Update user info in all relevant chat rooms
+                updateUserInChatRooms(updatedUser);
+              }
+            },
+            onError: (error) {
+              debugPrint('❌ ChatProvider: Error listening to user $userId: $error');
+            },
+          );
+          _userProfileSubscriptions[userId] = subscription;
+          debugPrint('✅ ChatProvider: Set up profile listener for user: $userId');
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ ChatProvider: Error setting up user profile listeners: $e');
+    }
+  }
+
+  /// Clean up old user profile listeners and set up new ones
+  void _refreshUserProfileListeners() {
+    debugPrint('🔄 ChatProvider: _refreshUserProfileListeners called - cleaning up ${_userProfileSubscriptions.length} existing listeners');
+    // Cancel existing subscriptions
+    for (final subscription in _userProfileSubscriptions.values) {
+      subscription.cancel();
+    }
+    _userProfileSubscriptions.clear();
+    
+    // Set up new listeners
+    _setupUserProfileListeners();
+  }
+
+  /// Public method to refresh user profile listeners (useful after hot reload)
+  void refreshUserProfileListeners() {
+    debugPrint('🔄 ChatProvider: Manually refreshing user profile listeners...');
+    _refreshUserProfileListeners();
+  }
+
   /// Get or create a deterministic 1:1 private room between two users.
   /// This ensures both users always end up in the same room when they scan each other's QR codes.
   Future<ChatRoom> getOrCreatePrivateRoomWith(
@@ -823,6 +958,15 @@ class ChatProvider with ChangeNotifier {
       } catch (_) {}
     }
     _roomMessageSubscriptions.clear();
+    
+    // Clean up user profile subscriptions
+    for (var sub in _userProfileSubscriptions.values) {
+      try {
+        sub.cancel();
+      } catch (_) {}
+    }
+    _userProfileSubscriptions.clear();
+    
     _socketService.disconnect();
     super.dispose();
   }

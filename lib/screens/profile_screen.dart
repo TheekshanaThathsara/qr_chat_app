@@ -4,6 +4,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:instant_chat_app/providers/user_provider.dart';
+import 'package:instant_chat_app/providers/chat_provider.dart';
+import 'package:instant_chat_app/providers/conversation_provider.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -34,7 +36,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-  backgroundColor: Colors.white,
+      backgroundColor: Colors.white,
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         title: const Text(
           'Profile',
@@ -85,7 +88,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 end: Alignment.bottomCenter,
               ),
             ),
-            child: Padding(
+            child: SingleChildScrollView(
               padding: const EdgeInsets.all(20.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -521,13 +524,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+      final conversationProvider = Provider.of<ConversationProvider>(context, listen: false);
+      
+      // Update user profile
       await userProvider.updateUser(username: _nameController.text.trim());
+      
+      // Get the updated user
+      final updatedUser = userProvider.currentUser;
+      if (updatedUser != null) {
+        // Update user information in all chat rooms
+        await chatProvider.updateUserInChatRooms(updatedUser);
+        
+        // Update user information in all conversations
+        await conversationProvider.updateUserInConversations(updatedUser);
+      }
+      
       setState(() {
         _isEditing = false;
       });
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile updated successfully')),
+          const SnackBar(content: Text('Profile updated successfully - changes will appear in chat list')),
         );
       }
     } catch (e) {

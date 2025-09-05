@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:instant_chat_app/providers/user_provider.dart';
 import 'package:instant_chat_app/providers/conversation_provider.dart';
+import 'package:instant_chat_app/providers/chat_provider.dart';
 import 'package:instant_chat_app/screens/qr_scanner_screen.dart';
 import 'package:instant_chat_app/screens/conversation_screen.dart';
 import 'package:instant_chat_app/screens/profile_screen.dart';
@@ -72,9 +73,12 @@ class _DirectMessageHomeScreenState extends State<DirectMessageHomeScreen> with 
   Future<void> _initializeConversations() async {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     final conversationProvider = Provider.of<ConversationProvider>(context, listen: false);
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
 
     if (userProvider.currentUser != null) {
       await conversationProvider.loadConversations(userProvider.currentUser!.id);
+      // Also initialize chat provider to set up real-time profile listeners
+      await chatProvider.initializeChat(userProvider.currentUser!);
     }
   }
 

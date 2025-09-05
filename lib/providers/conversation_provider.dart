@@ -272,7 +272,18 @@ class ConversationProvider with ChangeNotifier {
   }
 
   // Send a message
-  Future<void> sendMessage(String conversationId, String senderId, String senderName, String content, {MessageType type = MessageType.text}) async {
+  Future<void> sendMessage(
+    String conversationId, 
+    String senderId, 
+    String senderName, 
+    String content, 
+    {
+      MessageType type = MessageType.text,
+      String? replyToMessageId,
+      String? replyToContent,
+      String? replyToSenderName,
+    }
+  ) async {
     try {
       print('📤 ConversationProvider: Sending message to conversation: $conversationId');
       
@@ -284,6 +295,9 @@ class ConversationProvider with ChangeNotifier {
         content: content,
         type: type,
         timestamp: DateTime.now(),
+        replyToMessageId: replyToMessageId,
+        replyToContent: replyToContent,
+        replyToSenderName: replyToSenderName,
       );
 
       // Add to local list immediately for instant UI update
@@ -367,6 +381,117 @@ class ConversationProvider with ChangeNotifier {
     _conversationsSubscription = null;
   }
 
+  // Get conversation by ID
+  Conversation? getConversationById(String conversationId) {
+    try {
+      return _conversations.firstWhere((c) => c.id == conversationId);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Send a reply message
+  Future<void> sendReplyMessage(
+    String conversationId, 
+    String senderId, 
+    String senderName, 
+    String content, 
+    Message replyToMessage,
+    {MessageType type = MessageType.text}
+  ) async {
+    try {
+      print('📤 ConversationProvider: Sending reply message to conversation: $conversationId');
+      
+      Message message = Message(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        conversationId: conversationId,
+        senderId: senderId,
+        senderName: senderName,
+        content: content,
+        type: type,
+        timestamp: DateTime.now(),
+        replyToMessageId: replyToMessage.id,
+        replyToContent: replyToMessage.content,
+        replyToSenderName: replyToMessage.senderName,
+      );
+
+      // Add to local list immediately for instant UI update
+      _currentMessages.add(message);
+      notifyListeners();
+
+      // Save to Firebase and local database
+      await _firebaseService.sendMessage(message);
+      await _databaseService.insertMessage(message);
+
+      // Update conversation's last message
+      await _updateConversationLastMessage(conversationId, content, DateTime.now());
+
+      // Increment unread count for the other user
+      int index = _conversations.indexWhere((c) => c.id == conversationId);
+      if (index != -1) {
+        final conversation = _conversations[index];
+        String otherUserId = senderId == conversation.user1Id ? conversation.user2Id : conversation.user1Id;
+        final updatedUnreadCounts = Map<String, int>.from(conversation.unreadCounts);
+        updatedUnreadCounts[otherUserId] = (updatedUnreadCounts[otherUserId] ?? 0) + 1;
+        _conversations[index] = conversation.copyWith(unreadCounts: updatedUnreadCounts);
+        
+        // Update in Firebase and local database
+        await _firebaseService.updateConversation(_conversations[index]);
+        await _databaseService.insertOrUpdateConversation(_conversations[index]);
+        notifyListeners();
+      }
+
+      print('✅ ConversationProvider: Reply message sent successfully');
+      
+    } catch (e) {
+      print('❌ ConversationProvider: Error sending reply message: $e');
+      // Remove from local list if failed
+      _currentMessages.removeWhere((m) => m.content == content && m.senderId == senderId);
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  // Delete a message
+  Future<void> deleteMessage(String messageId, String currentUserId) async {
+    try {
+      print('🗑️ ConversationProvider: Deleting message: $messageId');
+      
+      // Find the message in current messages
+      int messageIndex = _currentMessages.indexWhere((m) => m.id == messageId);
+      if (messageIndex == -1) {
+        print('❌ Message not found in current messages');
+        return;
+      }
+
+      Message message = _currentMessages[messageIndex];
+      
+      // Check if user can delete this message (only sender can delete)
+      if (message.senderId != currentUserId) {
+        throw Exception('You can only delete your own messages');
+      }
+
+      // Mark message as deleted locally
+      Message deletedMessage = message.copyWith(
+        isDeleted: true,
+        content: 'This message was deleted',
+      );
+      
+      _currentMessages[messageIndex] = deletedMessage;
+      notifyListeners();
+
+      // Update in Firebase and local database (for now, just update in local database)
+      // TODO: Implement updateMessage in FirebaseService if needed
+      await _databaseService.insertMessage(deletedMessage);
+
+      print('✅ ConversationProvider: Message deleted successfully');
+      
+    } catch (e) {
+      print('❌ ConversationProvider: Error deleting message: $e');
+      rethrow;
+    }
+  }
+
   // Dispose method to clean up resources
   @override
   void dispose() {
@@ -375,12 +500,56 @@ class ConversationProvider with ChangeNotifier {
     super.dispose();
   }
 
-  // Get conversation by ID
-  Conversation? getConversationById(String conversationId) {
+  /// Update user information in all conversations they participate in
+  Future<void> updateUserInConversations(User updatedUser) async {
     try {
-      return _conversations.firstWhere((c) => c.id == conversationId);
+      print('🔄 ConversationProvider: Updating user ${updatedUser.username} (${updatedUser.id}) in all conversations');
+      
+      bool hasUpdates = false;
+      
+      // Update user in local conversations list
+      for (int i = 0; i < _conversations.length; i++) {
+        final conversation = _conversations[i];
+        bool conversationUpdated = false;
+        
+        if (conversation.user1Id == updatedUser.id) {
+          _conversations[i] = conversation.copyWith(
+            user1Name: updatedUser.username,
+            user1ProfileImage: updatedUser.profileImage,
+          );
+          conversationUpdated = true;
+        } else if (conversation.user2Id == updatedUser.id) {
+          _conversations[i] = conversation.copyWith(
+            user2Name: updatedUser.username,
+            user2ProfileImage: updatedUser.profileImage,
+          );
+          conversationUpdated = true;
+        }
+        
+        if (conversationUpdated) {
+          hasUpdates = true;
+          
+          // Save updated conversation to local database
+          await _databaseService.insertOrUpdateConversation(_conversations[i]);
+          
+          // Try to save to Firebase for sync with other users
+          try {
+            await _firebaseService.updateConversation(_conversations[i]);
+          } catch (e) {
+            print('❌ Failed to sync updated conversation to Firebase: $e');
+          }
+          
+          print('✅ Updated user info in conversation: ${conversation.id}');
+        }
+      }
+      
+      if (hasUpdates) {
+        notifyListeners();
+        print('✅ ConversationProvider: Successfully updated user info in conversations');
+      }
+      
     } catch (e) {
-      return null;
+      print('❌ ConversationProvider: Error updating user in conversations: $e');
     }
   }
 }

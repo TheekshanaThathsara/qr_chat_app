@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/conversation.dart';
 import '../providers/conversation_provider.dart';
 import '../providers/user_provider.dart';
+import 'user_details_screen.dart';
 
 class ConversationScreen extends StatefulWidget {
   final Conversation conversation;
@@ -102,37 +103,75 @@ class _ConversationScreenState extends State<ConversationScreen> {
             ),
           ),
         ),
-        title: Row(
-          children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundImage: otherUserProfileImage != null
-                  ? NetworkImage(otherUserProfileImage)
-                  : null,
-              backgroundColor: Colors.orange[300],
-              child: otherUserProfileImage == null
-                  ? Text(
-                      otherUserName.isNotEmpty ? otherUserName[0].toUpperCase() : '?',
+        title: GestureDetector(
+          onTap: () {
+            print('🔥 Profile section tapped!');
+            print('🔥 Conversation ID: ${widget.conversation.id}');
+            print('🔥 Current User ID: ${widget.currentUserId}');
+            print('🔥 Other User Name: $otherUserName');
+            
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => UserDetailsScreen(
+                  conversation: widget.conversation,
+                  currentUserId: widget.currentUserId,
+                ),
+              ),
+            ).then((result) {
+              print('🔥 UserDetailsScreen closed with result: $result');
+            }).catchError((error) {
+              print('🔥 UserDetailsScreen navigation error: $error');
+            });
+          },
+          child: Row(
+            children: [
+              Hero(
+                tag: 'profile_${widget.conversation.getOtherUserId(widget.currentUserId)}',
+                child: CircleAvatar(
+                  radius: 20,
+                  backgroundImage: otherUserProfileImage != null
+                      ? NetworkImage(otherUserProfileImage)
+                      : null,
+                  backgroundColor: Colors.orange[300],
+                  child: otherUserProfileImage == null
+                      ? Text(
+                          otherUserName.isNotEmpty ? otherUserName[0].toUpperCase() : '?',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+                      : null,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      otherUserName,
                       style: const TextStyle(
+                        fontSize: 18,
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
                       ),
-                    )
-                  : null,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                otherUserName,
-                style: const TextStyle(
-                  fontSize: 18,
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const Text(
+                      'Tap to view profile',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ],
                 ),
-                overflow: TextOverflow.ellipsis,
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         centerTitle: true,
         backgroundColor: Colors.transparent,

@@ -59,6 +59,11 @@ class InstantChatApp extends StatelessWidget {
           // Set up callbacks between providers
           userProvider.onUserReady = (user) {
             conversationProvider.loadConversations(user.id);
+            // Initialize chat provider and set up real-time listeners
+            chatProvider.initializeChat(user).then((_) {
+              // Ensure profile listeners are active after initialization
+              chatProvider.refreshUserProfileListeners();
+            });
           };
 
           userProvider.onUserLogout = () {

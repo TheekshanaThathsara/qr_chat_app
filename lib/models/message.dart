@@ -16,6 +16,10 @@ class Message {
   final bool isRead;
   final String? imageUrl;
   final String? fileName;
+  final String? replyToMessageId;
+  final String? replyToContent;
+  final String? replyToSenderName;
+  final bool isDeleted;
 
   Message({
     required this.id,
@@ -28,6 +32,10 @@ class Message {
     this.isRead = false,
     this.imageUrl,
     this.fileName,
+    this.replyToMessageId,
+    this.replyToContent,
+    this.replyToSenderName,
+    this.isDeleted = false,
   });
 
   factory Message.fromJson(Map<String, dynamic> json) {
@@ -42,6 +50,10 @@ class Message {
       isRead: json['isRead'] ?? false,
       imageUrl: json['imageUrl'],
       fileName: json['fileName'],
+      replyToMessageId: json['replyToMessageId'],
+      replyToContent: json['replyToContent'],
+      replyToSenderName: json['replyToSenderName'],
+      isDeleted: json['isDeleted'] ?? false,
     );
   }
 
@@ -57,6 +69,10 @@ class Message {
       'isRead': isRead,
       'imageUrl': imageUrl,
       'fileName': fileName,
+      'replyToMessageId': replyToMessageId,
+      'replyToContent': replyToContent,
+      'replyToSenderName': replyToSenderName,
+      'isDeleted': isDeleted,
     };
   }
 
@@ -71,6 +87,10 @@ class Message {
     bool? isRead,
     String? imageUrl,
     String? fileName,
+    String? replyToMessageId,
+    String? replyToContent,
+    String? replyToSenderName,
+    bool? isDeleted,
   }) {
     return Message(
       id: id ?? this.id,
@@ -83,6 +103,10 @@ class Message {
       isRead: isRead ?? this.isRead,
       imageUrl: imageUrl ?? this.imageUrl,
       fileName: fileName ?? this.fileName,
+      replyToMessageId: replyToMessageId ?? this.replyToMessageId,
+      replyToContent: replyToContent ?? this.replyToContent,
+      replyToSenderName: replyToSenderName ?? this.replyToSenderName,
+      isDeleted: isDeleted ?? this.isDeleted,
     );
   }
 }
