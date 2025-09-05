@@ -1,0 +1,32 @@
+#!/bin/bash
+
+# Simple script to create a basic chat app icon
+# This creates a simple colored PNG that you can replace later
+
+echo "📱 QR Chat App Icon Setup"
+echo "========================="
+echo ""
+echo "To change your app icon, you need to:"
+echo ""
+echo "1. Create or download a 1024x1024 PNG icon"
+echo "2. Save it as 'app_icon.png' in this folder"
+echo "3. Run: flutter pub get"
+echo "4. Run: flutter pub run flutter_launcher_icons:main"
+echo "5. Rebuild your app"
+echo ""
+echo "💡 Icon Ideas for your QR Chat App:"
+echo "   - Chat bubble with QR code inside"
+echo "   - Two phones with QR codes connecting"
+echo "   - Speech bubble with scanning lines"
+echo "   - QR code with chat symbols"
+echo ""
+echo "🎨 You can create icons using:"
+echo "   - Canva.com (free online design tool)"
+echo "   - GIMP (free image editor)"
+echo "   - Figma (free design tool)"
+echo "   - Online icon generators"
+echo ""
+echo "📦 Current setup:"
+echo "   ✅ flutter_launcher_icons package installed"
+echo "   ✅ Configuration ready in pubspec.yaml"
+echo "   ❌ Custom icon needed (place app_icon.png here)"
