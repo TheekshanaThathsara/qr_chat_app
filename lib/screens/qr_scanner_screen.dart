@@ -64,23 +64,116 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('Scan QR Code'),
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.flash_on),
-            onPressed: () => cameraController.toggleTorch(),
+        title: const Text(
+          'Scan QR Code',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
           ),
-          IconButton(
-            icon: const Icon(Icons.flip_camera_ios),
-            onPressed: () => cameraController.switchCamera(),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFFFF9800), Color(0xFFD84315)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        actions: [
+          Container(
+            margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.flash_on, color: Colors.white, size: 20),
+              onPressed: () => cameraController.toggleTorch(),
+              tooltip: 'Toggle Flash',
+            ),
+          ),
+          Container(
+            margin: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.flip_camera_ios, color: Colors.white, size: 20),
+              onPressed: () => cameraController.switchCamera(),
+              tooltip: 'Switch Camera',
+            ),
           ),
         ],
       ),
       body: !_isInitialized
-          ? const Center(child: CircularProgressIndicator())
+          ? Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xFF1A1A1A),
+                    Color(0xFF000000),
+                  ],
+                ),
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFF9800), Color(0xFFD84315)],
+                        ),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFFF9800).withOpacity(0.3),
+                            blurRadius: 20,
+                            spreadRadius: 5,
+                          ),
+                        ],
+                      ),
+                      child: const CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        strokeWidth: 3,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Initializing Camera...',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
           : !_permissionGranted
           ? _buildPermissionDenied()
           : Stack(
@@ -97,39 +190,113 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
 
   Widget _buildPermissionDenied() {
     return Container(
-      color: Colors.black,
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.camera_alt_outlined,
-              size: 100,
-              color: Colors.white,
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              'Camera Permission Required',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Please grant camera permission to scan QR codes',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white70, fontSize: 14),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () async {
-                await openAppSettings();
-              },
-              child: const Text('Open Settings'),
-            ),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFF1A1A1A),
+            Color(0xFF000000),
           ],
+        ),
+      ),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xFFFF9800),
+                      Color(0xFFD84315),
+                    ],
+                  ),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFFF9800).withOpacity(0.3),
+                      blurRadius: 20,
+                      spreadRadius: 5,
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.camera_alt_outlined,
+                  size: 60,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 32),
+              const Text(
+                'Camera Permission Required',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Please grant camera permission to scan QR codes and connect with friends',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.grey[400],
+                  fontSize: 16,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 40),
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xFFFF9800),
+                      Color(0xFFD84315),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFFF9800).withOpacity(0.3),
+                      blurRadius: 15,
+                      spreadRadius: 2,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: ElevatedButton(
+                  onPressed: () async {
+                    await openAppSettings();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text(
+                    'Open Settings',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -139,36 +306,134 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     return Container(
       decoration: const ShapeDecoration(
         shape: QrScannerOverlayShape(
-          borderColor: Colors.white,
-          borderRadius: 10,
-          borderLength: 30,
-          borderWidth: 10,
-          cutOutSize: 250,
+          borderColor: Color(0xFFFF9800),
+          borderRadius: 20,
+          borderLength: 40,
+          borderWidth: 4,
+          cutOutSize: 280,
         ),
       ),
-      child: const Align(
-        alignment: Alignment.bottomCenter,
-        child: Padding(
-          padding: EdgeInsets.all(20.0),
-          child: Text(
-            'Point your camera at a QR code',
-            style: TextStyle(color: Colors.white, fontSize: 16),
+      child: Column(
+        children: [
+          const Spacer(),
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 60),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.7),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: const Color(0xFFFF9800).withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFF9800), Color(0xFFD84315)],
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.qr_code_scanner,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Text(
+                      'Scanning for QR Code',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Point your camera at a QR code to connect with friends',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.grey[300],
+                    fontSize: 14,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    Flexible(
+                      child: _buildHintItem(Icons.flash_on, 'Flash'),
+                    ),
+                    Flexible(
+                      child: _buildHintItem(Icons.flip_camera_ios, 'Flip'),
+                    ),
+                    Flexible(
+                      child: _buildHintItem(Icons.center_focus_strong, 'Focus'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHintItem(IconData icon, String label) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: const Color(0xFFFF9800).withOpacity(0.3),
+              width: 1,
+            ),
+          ),
+          child: Icon(
+            icon,
+            color: Colors.white,
+            size: 14,
           ),
         ),
-      ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.grey[400],
+            fontSize: 9,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
   }
 }
 
 class QrScannerOverlayShape extends ShapeBorder {
   const QrScannerOverlayShape({
-    this.borderColor = Colors.white,
-    this.borderWidth = 3.0,
-    this.overlayColor = const Color.fromRGBO(0, 0, 0, 80),
-    this.borderRadius = 0,
+    this.borderColor = const Color(0xFFFF9800),
+    this.borderWidth = 4.0,
+    this.overlayColor = const Color.fromRGBO(0, 0, 0, 120),
+    this.borderRadius = 20,
     this.borderLength = 40,
     double? cutOutSize,
-  }) : cutOutSize = cutOutSize ?? 250;
+  }) : cutOutSize = cutOutSize ?? 280;
 
   final Color borderColor;
   final double borderWidth;

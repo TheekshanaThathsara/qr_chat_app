@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:instant_chat_app/providers/user_provider.dart';
-import 'package:instant_chat_app/screens/home_screen.dart';
+import 'package:instant_chat_app/screens/direct_message_home_screen.dart';
 import 'package:instant_chat_app/screens/login_screen.dart';
 
 class WelcomeScreen extends StatefulWidget {
@@ -44,7 +44,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          MaterialPageRoute(builder: (context) => const DirectMessageHomeScreen()),
         );
       }
     } catch (e) {

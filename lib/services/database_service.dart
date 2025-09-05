@@ -2,6 +2,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'dart:convert';
 import 'package:instant_chat_app/models/chat_room.dart';
+import 'package:instant_chat_app/models/conversation.dart';
 import 'package:instant_chat_app/models/message.dart';
 import 'package:instant_chat_app/models/user.dart';
 import 'package:instant_chat_app/models/contact.dart';
@@ -20,7 +21,7 @@ class DatabaseService {
 
   static Database? _database;
   static const String _databaseName = 'instant_chat.db';
-  static const int _databaseVersion = 3;
+  static const int _databaseVersion = 5;
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -58,7 +59,7 @@ class DatabaseService {
     await db.execute('''
       CREATE TABLE messages (
         id TEXT PRIMARY KEY,
-        chat_room_id TEXT NOT NULL,
+        conversation_id TEXT NOT NULL,
         sender_id TEXT NOT NULL,
         sender_name TEXT NOT NULL,
         content TEXT NOT NULL,
@@ -68,7 +69,24 @@ class DatabaseService {
         image_url TEXT,
         file_name TEXT,
         synced INTEGER NOT NULL DEFAULT 0,
-        FOREIGN KEY (chat_room_id) REFERENCES chat_rooms (id)
+        FOREIGN KEY (conversation_id) REFERENCES conversations (id)
+      )
+    ''');
+
+    // Create conversations table
+    await db.execute('''
+      CREATE TABLE conversations (
+        id TEXT PRIMARY KEY,
+        user1_id TEXT NOT NULL,
+        user2_id TEXT NOT NULL,
+        user1_name TEXT NOT NULL,
+        user2_name TEXT NOT NULL,
+        user1_profile_image TEXT,
+        user2_profile_image TEXT,
+        last_message TEXT,
+        last_message_time TEXT,
+        created_at TEXT NOT NULL,
+        unread_counts TEXT
       )
     ''');
 
@@ -111,6 +129,87 @@ class DatabaseService {
       } catch (e) {
         // If the column already exists or alter failed, log and continue
         // (Some devices may already have this column)
+      }
+    }
+    // Version 4: Add conversations support
+    if (oldVersion < 4) {
+      try {
+        // Create conversations table
+        await db.execute('''
+          CREATE TABLE conversations (
+            id TEXT PRIMARY KEY,
+            user1_id TEXT NOT NULL,
+            user2_id TEXT NOT NULL,
+            user1_name TEXT NOT NULL,
+            user2_name TEXT NOT NULL,
+            user1_profile_image TEXT,
+            user2_profile_image TEXT,
+            last_message TEXT,
+            last_message_time TEXT,
+            created_at TEXT NOT NULL,
+            unread_counts TEXT
+          )
+        ''');
+        
+        // Update messages table to use conversation_id instead of chat_room_id
+        await db.execute('ALTER TABLE messages ADD COLUMN conversation_id TEXT');
+        
+        // Copy data from chat_room_id to conversation_id for existing records
+        await db.execute('UPDATE messages SET conversation_id = chat_room_id WHERE conversation_id IS NULL');
+        
+      } catch (e) {
+        print('Error upgrading database to version 4: $e');
+      }
+    }
+
+    // Version 5: Fix messages table schema to remove chat_room_id dependency
+    if (oldVersion < 5) {
+      try {
+        print('Upgrading database to version 5: Fixing messages table schema...');
+        
+        // Create a backup of messages data
+        await db.execute('''
+          CREATE TABLE messages_backup AS 
+          SELECT id, conversation_id, sender_id, sender_name, content, type, timestamp, is_read, image_url, file_name, synced 
+          FROM messages 
+          WHERE conversation_id IS NOT NULL
+        ''');
+        
+        // Drop the old messages table
+        await db.execute('DROP TABLE messages');
+        
+        // Recreate messages table with correct schema
+        await db.execute('''
+          CREATE TABLE messages (
+            id TEXT PRIMARY KEY,
+            conversation_id TEXT NOT NULL,
+            sender_id TEXT NOT NULL,
+            sender_name TEXT NOT NULL,
+            content TEXT NOT NULL,
+            type INTEGER NOT NULL,
+            timestamp TEXT NOT NULL,
+            is_read INTEGER NOT NULL DEFAULT 0,
+            image_url TEXT,
+            file_name TEXT,
+            synced INTEGER NOT NULL DEFAULT 0,
+            FOREIGN KEY (conversation_id) REFERENCES conversations (id)
+          )
+        ''');
+        
+        // Restore data from backup
+        await db.execute('''
+          INSERT INTO messages (id, conversation_id, sender_id, sender_name, content, type, timestamp, is_read, image_url, file_name, synced)
+          SELECT id, conversation_id, sender_id, sender_name, content, type, timestamp, is_read, image_url, file_name, synced
+          FROM messages_backup
+        ''');
+        
+        // Drop the backup table
+        await db.execute('DROP TABLE messages_backup');
+        
+        print('Successfully upgraded database to version 5!');
+        
+      } catch (e) {
+        print('Error upgrading database to version 5: $e');
       }
     }
   }
@@ -432,7 +531,7 @@ class DatabaseService {
     final db = await database;
     await db.insert('messages', {
       'id': message.id,
-      'chat_room_id': message.chatRoomId,
+      'conversation_id': message.conversationId,
       'sender_id': message.senderId,
       'sender_name': message.senderName,
       'content': message.content,
@@ -608,5 +707,103 @@ class DatabaseService {
         return false;
       }
     }
+  }
+
+  // Conversation operations
+  Future<void> insertOrUpdateConversation(Conversation conversation) async {
+    final db = await database;
+    await db.insert(
+      'conversations',
+      {
+        'id': conversation.id,
+        'user1_id': conversation.user1Id,
+        'user2_id': conversation.user2Id,
+        'user1_name': conversation.user1Name,
+        'user2_name': conversation.user2Name,
+        'user1_profile_image': conversation.user1ProfileImage,
+        'user2_profile_image': conversation.user2ProfileImage,
+        'last_message': conversation.lastMessage,
+        'last_message_time': conversation.lastMessageTime?.toIso8601String(),
+        'created_at': conversation.createdAt.toIso8601String(),
+        'unread_counts': jsonEncode(conversation.unreadCounts),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<List<Conversation>> getConversationsForUser(String userId) async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'conversations',
+      where: 'user1_id = ? OR user2_id = ?',
+      whereArgs: [userId, userId],
+      orderBy: 'last_message_time DESC, created_at DESC',
+    );
+
+    return List.generate(maps.length, (i) {
+      return Conversation(
+        id: maps[i]['id'],
+        user1Id: maps[i]['user1_id'],
+        user2Id: maps[i]['user2_id'],
+        user1Name: maps[i]['user1_name'],
+        user2Name: maps[i]['user2_name'],
+        user1ProfileImage: maps[i]['user1_profile_image'],
+        user2ProfileImage: maps[i]['user2_profile_image'],
+        lastMessage: maps[i]['last_message'],
+        lastMessageTime: maps[i]['last_message_time'] != null
+            ? DateTime.parse(maps[i]['last_message_time'])
+            : null,
+        createdAt: DateTime.parse(maps[i]['created_at']),
+        unreadCounts: maps[i]['unread_counts'] != null
+            ? Map<String, int>.from(jsonDecode(maps[i]['unread_counts']))
+            : {},
+      );
+    });
+  }
+
+  Future<List<Message>> getMessagesForConversation(String conversationId) async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'messages',
+      where: 'conversation_id = ?',
+      whereArgs: [conversationId],
+      orderBy: 'timestamp ASC',
+    );
+
+    return List.generate(maps.length, (i) {
+      return Message(
+        id: maps[i]['id'],
+        conversationId: maps[i]['conversation_id'],
+        senderId: maps[i]['sender_id'],
+        senderName: maps[i]['sender_name'],
+        content: maps[i]['content'],
+        type: MessageType.values[maps[i]['type']],
+        timestamp: DateTime.parse(maps[i]['timestamp']),
+        isRead: maps[i]['is_read'] == 1,
+        imageUrl: maps[i]['image_url'],
+        fileName: maps[i]['file_name'],
+      );
+    });
+  }
+
+  Future<void> insertMessage(Message message) async {
+    final db = await database;
+    await db.insert(
+      'messages',
+      {
+        'id': message.id,
+        'conversation_id': message.conversationId,
+        'sender_id': message.senderId,
+        'sender_name': message.senderName,
+        'content': message.content,
+        'type': message.type.index,
+        'timestamp': message.timestamp.toIso8601String(),
+        'is_read': message.isRead ? 1 : 0,
+        'image_url': message.imageUrl,
+        'file_name': message.fileName,
+        'synced': 1,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 }

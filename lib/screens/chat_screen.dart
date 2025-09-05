@@ -41,6 +41,11 @@ class _ChatScreenState extends State<ChatScreen> {
   void _initializeChat() {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
     chatProvider.setCurrentChatRoom(widget.chatRoom);
+    
+    // Force reload messages when entering the chat
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      chatProvider.loadMessages(widget.chatRoom.id);
+    });
   }
 
   @override
@@ -310,7 +315,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   if (chatProvider.isLoading) {
                     return Container(
                       padding: const EdgeInsets.symmetric(vertical: 8),
-                      color: Colors.blue.shade100,
+                      color: Colors.orange.shade100,
                       child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -322,7 +327,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           SizedBox(width: 8),
                           Text(
                             'Sending message...',
-                            style: TextStyle(color: Colors.blue, fontSize: 12),
+                            style: const TextStyle(color: Colors.orange, fontSize: 12),
                           ),
                         ],
                       ),

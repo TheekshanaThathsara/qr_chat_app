@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:instant_chat_app/providers/chat_provider.dart';
+import 'package:instant_chat_app/providers/conversation_provider.dart';
 import 'package:instant_chat_app/providers/user_provider.dart';
+import 'package:instant_chat_app/providers/chat_provider.dart';
 import 'package:instant_chat_app/screens/splash_screen.dart';
-import 'package:instant_chat_app/utils/app_theme.dart';
+import 'package:instant_chat_app/theme/app_theme.dart';
 import 'package:instant_chat_app/utils/firebase_test.dart';
 import 'firebase_options.dart';
 import 'package:instant_chat_app/services/notification_service.dart';
@@ -50,21 +51,27 @@ class InstantChatApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(create: (_) => ConversationProvider()),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
       ],
-      child: Consumer2<UserProvider, ChatProvider>(
-        builder: (context, userProvider, chatProvider, child) {
+      child: Consumer3<UserProvider, ConversationProvider, ChatProvider>(
+        builder: (context, userProvider, conversationProvider, chatProvider, child) {
           // Set up callbacks between providers
           userProvider.onUserReady = (user) {
-            chatProvider.initializeChat(user);
+            conversationProvider.loadConversations(user.id);
+            // Initialize chat provider and set up real-time listeners
+            chatProvider.initializeChat(user).then((_) {
+              // Ensure profile listeners are active after initialization
+              chatProvider.refreshUserProfileListeners();
+            });
           };
 
           userProvider.onUserLogout = () {
-            chatProvider.disconnect();
+            conversationProvider.clearCurrentConversation();
           };
 
           return MaterialApp(
-            title: 'Instant Chat',
+            title: 'Direct Messages',
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             themeMode: ThemeMode.system,

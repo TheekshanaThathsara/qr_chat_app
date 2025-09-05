@@ -12,6 +12,16 @@ class MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Don't render empty messages to prevent blank message display
+    if (message.content.trim().isEmpty && message.type != MessageType.system) {
+      return const SizedBox.shrink();
+    }
+    
+    // For system messages, also check if content is meaningful
+    if (message.type == MessageType.system && message.content.trim().isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     return Consumer<UserProvider>(
       builder: (context, userProvider, child) {
         final isMe = message.senderId == userProvider.currentUser?.id;
@@ -80,7 +90,7 @@ class MessageBubble extends StatelessWidget {
                                           : Icons.done,
                                       size: 16,
                                       color: message.isRead
-                                          ? Colors.blue[200]
+                                          ? Colors.orange[200]
                                           : Colors.white.withValues(alpha: 0.7),
                                     ),
                                   ],

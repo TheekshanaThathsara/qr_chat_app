@@ -125,7 +125,7 @@ class _QuickActionsModalState extends State<QuickActionsModal> {
                   icon: Icons.qr_code_scanner,
                   title: 'Scan QR Code',
                   subtitle: 'Scan to join rooms or add contacts',
-                  color: Colors.blue,
+                  color: Colors.orange,
                   onTap: () => _navigateToScanner(),
                 ),
                 const SizedBox(height: 12),
@@ -543,12 +543,12 @@ class _QRScannerModalState extends State<QRScannerModal> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.blue.withValues(alpha: 0.1),
+                    color: Colors.orange.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(
                     Icons.qr_code_scanner,
-                    color: Colors.blue,
+                    color: Colors.orange,
                     size: 24,
                   ),
                 ),

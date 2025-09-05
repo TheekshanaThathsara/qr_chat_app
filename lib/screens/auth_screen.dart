@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:instant_chat_app/providers/user_provider.dart';
-import 'package:instant_chat_app/screens/home_screen.dart';
+import 'package:instant_chat_app/screens/direct_message_home_screen.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -53,7 +53,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          MaterialPageRoute(builder: (_) => const DirectMessageHomeScreen()),
         );
       }
     } catch (e) {
@@ -85,7 +85,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          MaterialPageRoute(builder: (_) => const DirectMessageHomeScreen()),
         );
       }
     } catch (e) {

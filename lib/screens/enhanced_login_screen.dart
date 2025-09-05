@@ -110,17 +110,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.white,
-              const Color(0xFFFFF3E0), // Very light orange
-              const Color(0xFFFFE0B2), // Light orange
-              const Color(0xFFFF9800), // Main orange
-            ],
-            stops: const [0.0, 0.3, 0.7, 1.0],
-          ),
+          gradient: AppTheme.primaryGradient,
         ),
         child: SafeArea(
           child: Center(
@@ -161,26 +151,18 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
           width: 120,
           height: 120,
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color(0xFFFF9800),
-                Color(0xFFD84315),
-              ],
-            ),
+            color: Colors.white.withOpacity(0.2),
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: Colors.orange.withOpacity(0.4),
-                blurRadius: 25,
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 20,
                 spreadRadius: 5,
-                offset: const Offset(0, 10),
               ),
             ],
           ),
           child: const Icon(
-            Icons.chat_bubble_outline_rounded,
+            Icons.chat_bubble_outline,
             size: 60,
             color: Colors.white,
           ),
@@ -191,7 +173,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
           style: TextStyle(
             fontSize: 32,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF2E2E2E),
+            color: Colors.white,
           ),
         ),
         const SizedBox(height: 8),
@@ -199,7 +181,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
           'Sign in to continue chatting',
           style: TextStyle(
             fontSize: 16,
-            color: const Color(0xFF2E2E2E).withOpacity(0.7),
+            color: Colors.white.withOpacity(0.8),
           ),
         ),
       ],
@@ -207,21 +189,14 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   }
 
   Widget _buildLoginCard() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 20,
-            spreadRadius: 5,
-            offset: const Offset(0, 10),
-          ),
-        ],
+    return Card(
+      elevation: 8,
+      shadowColor: Colors.black.withOpacity(0.2),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(32.0),
+        padding: const EdgeInsets.all(24.0),
         child: Form(
           key: _formKey,
           child: Column(
@@ -230,18 +205,9 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
               const Text(
                 'Sign In',
                 style: TextStyle(
-                  fontSize: 28,
+                  fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF2E2E2E),
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Welcome back to your conversations',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[600],
+                  color: AppTheme.textPrimaryColor,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -265,163 +231,73 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   }
 
   Widget _buildEmailField() {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.orange.withOpacity(0.1),
-            blurRadius: 10,
-            spreadRadius: 2,
-          ),
-        ],
+    return TextFormField(
+      controller: _emailController,
+      keyboardType: TextInputType.emailAddress,
+      decoration: const InputDecoration(
+        labelText: 'Email',
+        hintText: 'Enter your email',
+        prefixIcon: Icon(Icons.email_outlined),
+        filled: true,
+        fillColor: AppTheme.backgroundColor,
       ),
-      child: TextFormField(
-        controller: _emailController,
-        keyboardType: TextInputType.emailAddress,
-        style: const TextStyle(color: Colors.black87, fontSize: 16),
-        decoration: InputDecoration(
-          labelText: 'Email',
-          labelStyle: TextStyle(color: Colors.grey[600]),
-          hintText: 'Enter your email',
-          hintStyle: TextStyle(color: Colors.grey[400]),
-          prefixIcon: const Icon(
-            Icons.email_outlined,
-            color: Color(0xFFFF9800),
-            size: 22,
-          ),
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: const BorderSide(color: Color(0xFFFF9800), width: 2),
-          ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: const BorderSide(color: Colors.red, width: 1),
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        ),
-        validator: (value) {
-          if (value == null || value.isEmpty) {
-            return 'Please enter your email';
-          }
-          if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-            return 'Please enter a valid email';
-          }
-          return null;
-        },
-      ),
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please enter your email';
+        }
+        if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+          return 'Please enter a valid email';
+        }
+        return null;
+      },
     );
   }
 
   Widget _buildPasswordField() {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.orange.withOpacity(0.1),
-            blurRadius: 10,
-            spreadRadius: 2,
+    return TextFormField(
+      controller: _passwordController,
+      obscureText: _obscurePassword,
+      decoration: InputDecoration(
+        labelText: 'Password',
+        hintText: 'Enter your password',
+        prefixIcon: const Icon(Icons.lock_outline),
+        suffixIcon: IconButton(
+          icon: Icon(
+            _obscurePassword ? Icons.visibility : Icons.visibility_off,
           ),
-        ],
-      ),
-      child: TextFormField(
-        controller: _passwordController,
-        obscureText: _obscurePassword,
-        style: const TextStyle(color: Colors.black87, fontSize: 16),
-        decoration: InputDecoration(
-          labelText: 'Password',
-          labelStyle: TextStyle(color: Colors.grey[600]),
-          hintText: 'Enter your password',
-          hintStyle: TextStyle(color: Colors.grey[400]),
-          prefixIcon: const Icon(
-            Icons.lock_outline,
-            color: Color(0xFFFF9800),
-            size: 22,
-          ),
-          suffixIcon: IconButton(
-            icon: Icon(
-              _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-              color: Colors.grey[600],
-            ),
-            onPressed: () {
-              setState(() {
-                _obscurePassword = !_obscurePassword;
-              });
-            },
-          ),
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: const BorderSide(color: Color(0xFFFF9800), width: 2),
-          ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: const BorderSide(color: Colors.red, width: 1),
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          onPressed: () {
+            setState(() {
+              _obscurePassword = !_obscurePassword;
+            });
+          },
         ),
-        validator: (value) {
-          if (value == null || value.isEmpty) {
-            return 'Please enter your password';
-          }
-          if (value.length < 6) {
-            return 'Password must be at least 6 characters';
-          }
-          return null;
-        },
+        filled: true,
+        fillColor: AppTheme.backgroundColor,
       ),
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please enter your password';
+        }
+        if (value.length < 6) {
+          return 'Password must be at least 6 characters';
+        }
+        return null;
+      },
     );
   }
 
   Widget _buildLoginButton() {
-    return Container(
+    return SizedBox(
       height: 56,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFFF9800), Color(0xFFD84315)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.orange.withOpacity(0.3),
-            blurRadius: 15,
-            spreadRadius: 2,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
       child: ElevatedButton(
         onPressed: _isLoading ? null : _loginUser,
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
+          backgroundColor: AppTheme.primaryColor,
           foregroundColor: Colors.white,
-          shadowColor: Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          elevation: 0,
+          elevation: 2,
         ),
         child: _isLoading
             ? const SizedBox(
@@ -436,8 +312,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                 'Sign In',
                 style: TextStyle(
                   fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
       ),
@@ -456,14 +331,14 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
         text: TextSpan(
           text: "Don't have an account? ",
           style: TextStyle(
-            color: const Color(0xFF2E2E2E).withOpacity(0.7),
+            color: Colors.white.withOpacity(0.8),
             fontSize: 16,
           ),
           children: const [
             TextSpan(
               text: 'Sign Up',
               style: TextStyle(
-                color: Colors.orange,
+                color: Colors.white,
                 fontWeight: FontWeight.bold,
                 decoration: TextDecoration.underline,
               ),
