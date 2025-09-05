@@ -104,17 +104,17 @@ class _SplashScreenState extends State<SplashScreen>
               ),
               const SizedBox(height: 32),
               const Text(
-                'Instant Chat',
+                'SnapTalk',
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: Colors.black,
                 ),
               ),
               const SizedBox(height: 8),
               const Text(
                 'Connect instantly with QR codes',
-                style: TextStyle(fontSize: 16, color: Colors.white70),
+                style: TextStyle(fontSize: 16, color: Colors.black),
               ),
               const SizedBox(height: 48),
               const CircularProgressIndicator(

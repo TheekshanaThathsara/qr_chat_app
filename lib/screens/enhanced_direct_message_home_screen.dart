@@ -426,19 +426,34 @@ class _EnhancedDirectMessageHomeScreenState extends State<EnhancedDirectMessageH
   }
 
   Widget _buildSearchField() {
-    return TextField(
-      controller: _searchController,
-      decoration: InputDecoration(
-        hintText: 'Search conversations...',
-        hintStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
-        border: InputBorder.none,
-        contentPadding: EdgeInsets.zero,
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      style: const TextStyle(color: Colors.white),
-      autofocus: true,
-      onChanged: (value) {
-        // TODO: Implement search functionality
-      },
+      child: TextField(
+        controller: _searchController,
+        decoration: const InputDecoration(
+          hintText: 'Search conversations...',
+          hintStyle: TextStyle(color: Colors.grey),
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.zero,
+        ),
+        style: const TextStyle(color: Colors.black87),
+        autofocus: true,
+        onChanged: (value) {
+          // TODO: Implement search functionality
+        },
+      ),
     );
   }
 

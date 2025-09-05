@@ -131,12 +131,12 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
         ),
         const SizedBox(height: 24),
         const Text(
-          'QR CHAT',
+          'SnapTalk',
           style: TextStyle(
             fontSize: 36,
             fontWeight: FontWeight.bold,
             color: Color(0xFF2E2E2E),
-            letterSpacing: 3,
+            letterSpacing: 1,
           ),
         ),
         const SizedBox(height: 12),
