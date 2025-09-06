@@ -2,20 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:instant_chat_app/providers/user_provider.dart';
 import 'package:instant_chat_app/screens/direct_message_home_screen.dart';
-import 'package:instant_chat_app/screens/signup_screen.dart';
-import 'package:instant_chat_app/theme/app_theme.dart';
+import 'package:instant_chat_app/screens/login_screen.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class SignupScreen extends StatefulWidget {
+  const SignupScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<SignupScreen> createState() => _SignupScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin {
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+class _SignupScreenState extends State<SignupScreen> with TickerProviderStateMixin {
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _usernameController = TextEditingController();
+
   bool _isLoading = false;
   bool _obscurePassword = true;
   
@@ -49,10 +50,9 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       end: Offset.zero,
     ).animate(CurvedAnimation(
       parent: _slideController,
-      curve: Curves.easeOutCubic,
+      curve: Curves.easeOut,
     ));
     
-    // Start animations
     _fadeController.forward();
     _slideController.forward();
   }
@@ -61,38 +61,39 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _usernameController.dispose();
     _fadeController.dispose();
     _slideController.dispose();
     super.dispose();
   }
 
-  Future<void> _loginUser() async {
+  Future<void> _signUp() async {
     if (!_formKey.currentState!.validate()) return;
+
     setState(() {
       _isLoading = true;
     });
+
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
-      await userProvider.loginUser(
+
+      await userProvider.signUp(
         email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
+        password: _passwordController.text,
+        username: _usernameController.text.trim(),
       );
+
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const DirectMessageHomeScreen()),
+          MaterialPageRoute(builder: (_) => const DirectMessageHomeScreen()),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Login failed: $e'),
-            backgroundColor: AppTheme.errorColor,
-            behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.all(16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
           ),
         );
       }
@@ -115,11 +116,11 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
             end: Alignment.bottomRight,
             colors: [
               Colors.white,
-              const Color(0xFFFFF3E0), // Very light orange
-              const Color(0xFFFFE0B2), // Light orange
-              const Color(0xFFFF9800), // Main orange
+              Color(0xFFFFF3E0), // Very light orange
+              Color(0xFFFFE0B2), // Light orange
+              Color(0xFFFF9800), // Orange
             ],
-            stops: const [0.0, 0.3, 0.7, 1.0],
+            stops: [0.0, 0.3, 0.7, 1.0],
           ),
         ),
         child: SafeArea(
@@ -133,16 +134,16 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Logo and title
+                      // Header with app icon
                       _buildHeader(),
-                      const SizedBox(height: 48),
-                      
-                      // Login form card
-                      _buildLoginCard(),
+                      const SizedBox(height: 32),
+                    
+                      // Signup form card
+                      _buildSignupCard(),
                       const SizedBox(height: 24),
-                      
-                      // Sign up link
-                      _buildSignUpLink(),
+                    
+                      // Login link
+                      _buildLoginLink(),
                     ],
                   ),
                 ),
@@ -157,6 +158,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   Widget _buildHeader() {
     return Column(
       children: [
+        // App logo with shadow (same as login screen)
         Container(
           width: 120,
           height: 120,
@@ -181,38 +183,41 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
             ),
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
         const Text(
-          'Welcome Back!',
+          'WELCOME',
           style: TextStyle(
             fontSize: 32,
             fontWeight: FontWeight.bold,
             color: Color(0xFF2E2E2E),
+            letterSpacing: 2,
           ),
         ),
         const SizedBox(height: 8),
         Text(
-          'Sign in to continue chatting',
+          'Create Your Account',
           style: TextStyle(
-            fontSize: 16,
+            fontSize: 18,
             color: const Color(0xFF2E2E2E).withOpacity(0.7),
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildLoginCard() {
+  Widget _buildSignupCard() {
     return Container(
+      width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.orange.withOpacity(0.1),
             blurRadius: 20,
             spreadRadius: 5,
-            offset: const Offset(0, 10),
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -221,27 +226,29 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
         child: Form(
           key: _formKey,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Sign In',
+              Text(
+                'Join QR Chat',
                 style: TextStyle(
-                  fontSize: 28,
+                  fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF2E2E2E),
+                  color: const Color(0xFF2E2E2E),
                 ),
-                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
-                'Welcome back to your conversations',
+                'Fill in your details to create an account',
                 style: TextStyle(
                   fontSize: 16,
-                  color: Colors.grey[600],
+                  color: const Color(0xFF2E2E2E).withOpacity(0.6),
                 ),
-                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
+              
+              // Username field
+              _buildUsernameField(),
+              const SizedBox(height: 20),
               
               // Email field
               _buildEmailField(),
@@ -251,8 +258,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
               _buildPasswordField(),
               const SizedBox(height: 32),
               
-              // Login button
-              _buildLoginButton(),
+              // Signup button
+              _buildSignupButton(),
             ],
           ),
         ),
@@ -260,58 +267,112 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     );
   }
 
+  Widget _buildUsernameField() {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FA),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.orange.withOpacity(0.05),
+            blurRadius: 10,
+            spreadRadius: 1,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextFormField(
+        controller: _usernameController,
+        style: const TextStyle(
+          color: Colors.black,
+          fontSize: 16,
+        ),
+        decoration: InputDecoration(
+          labelText: 'Username',
+          prefixIcon: Icon(
+            Icons.person_outline,
+            color: const Color(0xFFFF9800),
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(
+              color: Color(0xFFFF9800),
+              width: 2,
+            ),
+          ),
+          labelStyle: TextStyle(
+            color: const Color(0xFF2E2E2E).withOpacity(0.7),
+          ),
+          filled: true,
+          fillColor: const Color(0xFFF8F9FA),
+        ),
+        validator: (value) {
+          if (value == null || value.trim().isEmpty) {
+            return 'Please enter a username';
+          }
+          if (value.trim().length < 3) {
+            return 'Username must be at least 3 characters long';
+          }
+          return null;
+        },
+      ),
+    );
+  }
+
   Widget _buildEmailField() {
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(15),
+        color: const Color(0xFFF8F9FA),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.orange.withOpacity(0.1),
+            color: Colors.orange.withOpacity(0.05),
             blurRadius: 10,
-            spreadRadius: 2,
+            spreadRadius: 1,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: TextFormField(
         controller: _emailController,
         keyboardType: TextInputType.emailAddress,
-        style: const TextStyle(color: Colors.black87, fontSize: 16),
+        style: const TextStyle(
+          color: Colors.black,
+          fontSize: 16,
+        ),
         decoration: InputDecoration(
           labelText: 'Email',
-          labelStyle: TextStyle(color: Colors.grey[600]),
-          hintText: 'Enter your email',
-          hintStyle: TextStyle(color: Colors.grey[400]),
-          prefixIcon: const Icon(
+          prefixIcon: Icon(
             Icons.email_outlined,
-            color: Color(0xFFFF9800),
-            size: 22,
+            color: const Color(0xFFFF9800),
           ),
-          filled: true,
-          fillColor: Colors.white,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
+            borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none,
           ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
-          ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: const BorderSide(color: Color(0xFFFF9800), width: 2),
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(
+              color: Color(0xFFFF9800),
+              width: 2,
+            ),
           ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: const BorderSide(color: Colors.red, width: 1),
+          labelStyle: TextStyle(
+            color: const Color(0xFF2E2E2E).withOpacity(0.7),
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          filled: true,
+          fillColor: const Color(0xFFF8F9FA),
         ),
         validator: (value) {
-          if (value == null || value.isEmpty) {
+          if (value == null || value.trim().isEmpty) {
             return 'Please enter your email';
           }
-          if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-            return 'Please enter a valid email';
+          if (!value.contains('@') || !value.contains('.')) {
+            return 'Please enter a valid email address';
           }
           return null;
         },
@@ -322,33 +383,34 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   Widget _buildPasswordField() {
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(15),
+        color: const Color(0xFFF8F9FA),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.orange.withOpacity(0.1),
+            color: Colors.orange.withOpacity(0.05),
             blurRadius: 10,
-            spreadRadius: 2,
+            spreadRadius: 1,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: TextFormField(
         controller: _passwordController,
         obscureText: _obscurePassword,
-        style: const TextStyle(color: Colors.black87, fontSize: 16),
+        style: const TextStyle(
+          color: Colors.black,
+          fontSize: 16,
+        ),
         decoration: InputDecoration(
           labelText: 'Password',
-          labelStyle: TextStyle(color: Colors.grey[600]),
-          hintText: 'Enter your password',
-          hintStyle: TextStyle(color: Colors.grey[400]),
-          prefixIcon: const Icon(
+          prefixIcon: Icon(
             Icons.lock_outline,
-            color: Color(0xFFFF9800),
-            size: 22,
+            color: const Color(0xFFFF9800),
           ),
           suffixIcon: IconButton(
             icon: Icon(
               _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-              color: Colors.grey[600],
+              color: const Color(0xFFFF9800),
             ),
             onPressed: () {
               setState(() {
@@ -356,32 +418,29 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
               });
             },
           ),
-          filled: true,
-          fillColor: Colors.white,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
+            borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none,
           ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
-          ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: const BorderSide(color: Color(0xFFFF9800), width: 2),
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(
+              color: Color(0xFFFF9800),
+              width: 2,
+            ),
           ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: const BorderSide(color: Colors.red, width: 1),
+          labelStyle: TextStyle(
+            color: const Color(0xFF2E2E2E).withOpacity(0.7),
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          filled: true,
+          fillColor: const Color(0xFFF8F9FA),
         ),
         validator: (value) {
           if (value == null || value.isEmpty) {
-            return 'Please enter your password';
+            return 'Please enter a password';
           }
           if (value.length < 6) {
-            return 'Password must be at least 6 characters';
+            return 'Password must be at least 6 characters long';
           }
           return null;
         },
@@ -389,47 +448,42 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     );
   }
 
-  Widget _buildLoginButton() {
+  Widget _buildSignupButton() {
     return Container(
       height: 56,
+      width: double.infinity,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFFFF9800), Color(0xFFD84315)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.orange.withOpacity(0.3),
-            blurRadius: 15,
+            color: const Color(0xFFFF9800).withOpacity(0.3),
+            blurRadius: 10,
             spreadRadius: 2,
             offset: const Offset(0, 4),
           ),
         ],
       ),
       child: ElevatedButton(
-        onPressed: _isLoading ? null : _loginUser,
+        onPressed: _isLoading ? null : _signUp,
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
-          foregroundColor: Colors.white,
           shadowColor: Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          elevation: 0,
         ),
         child: _isLoading
-            ? const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2,
-                ),
+            ? const CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 2,
               )
             : const Text(
-                'Sign In',
+                'Create Account',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -440,25 +494,26 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     );
   }
 
-  Widget _buildSignUpLink() {
+  Widget _buildLoginLink() {
     return TextButton(
-      onPressed: () {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const SignupScreen()),
-        );
-      },
+      onPressed: _isLoading
+          ? null
+          : () {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+              );
+            },
       child: RichText(
         text: TextSpan(
-          text: "Don't have an account? ",
+          text: "Already have an account? ",
           style: TextStyle(
             color: const Color(0xFF2E2E2E).withOpacity(0.7),
             fontSize: 16,
           ),
-          children: const [
+          children: [
             TextSpan(
-              text: 'Sign Up',
-              style: TextStyle(
+              text: 'Sign In',
+              style: const TextStyle(
                 color: Colors.orange,
                 fontWeight: FontWeight.bold,
                 decoration: TextDecoration.underline,

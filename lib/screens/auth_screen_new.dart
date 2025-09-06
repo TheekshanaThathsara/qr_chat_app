@@ -76,22 +76,20 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
             opacity: _fadeAnimation,
             child: SlideTransition(
               position: _slideAnimation,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 80), // Add space to push content down
-                    
-                    // Header with app icon
-                    _buildHeader(),
-                    const SizedBox(height: 48),
-
-                    // Navigation buttons card
-                    _buildNavigationCard(),
-                    
-                    const Spacer(), // Add spacer to balance the layout
-                  ],
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Header with app icon
+                      _buildHeader(),
+                      const SizedBox(height: 48),
+                      
+                      // Navigation buttons card
+                      _buildNavigationCard(),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -104,7 +102,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
   Widget _buildHeader() {
     return Column(
       children: [
-        // QR CHAT logo with shadow
+                // App logo with shadow (same as login screen)
         Container(
           width: 120,
           height: 120,
@@ -122,7 +120,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(20),
             child: Image.asset(
-              'assets/images/qr_chat_logo.png',
+              'assets/icon/app_icon.png',
               width: 120,
               height: 120,
               fit: BoxFit.cover,
@@ -131,12 +129,12 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
         ),
         const SizedBox(height: 24),
         const Text(
-          'SnapTalk',
+          'QR CHAT',
           style: TextStyle(
             fontSize: 36,
             fontWeight: FontWeight.bold,
             color: Color(0xFF2E2E2E),
-            letterSpacing: 1,
+            letterSpacing: 3,
           ),
         ),
         const SizedBox(height: 12),
